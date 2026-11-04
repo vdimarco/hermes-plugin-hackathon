@@ -5,7 +5,8 @@ pass only when the task is done, plus locked paths (usually the tests). The user
 approves it with /contract approve. From then on:
 
 * pre_tool_call blocks writes to locked paths (write_file, patch, shell writes such
-  as sed -i, >, rm, mv, git checkout, and file writes in execute_code).
+  as sed -i, >, rm, mv, git checkout, and file writes in execute_code). Subagents
+  started from the session (subagent_start) inherit the locks.
 * pre_llm_call reminds the agent of the definition of done on every turn.
 * post_tool_call records every run of a check command, with its exit code.
 * pre_verify does not let a turn that edited code finish while a check fails, has
@@ -69,6 +70,7 @@ class ContractPlugin:
         self._contracts: "OrderedDict[str, Dict[str, Any]]" = OrderedDict()
         self._loaded = False
         self._models: Dict[str, str] = {}
+        self._parents: Dict[str, str] = {}   # subagent session -> parent session key
 
     # -- config ---------------------------------------------------------------
     def _cfg(self, key: str, default: Any) -> Any:
@@ -212,12 +214,22 @@ class ContractPlugin:
         except Exception:
             logger.debug("contract: post_tool_call failed", exc_info=True)
 
+    def on_subagent_start(self, parent_session_id: Optional[str] = None, child_session_id: Optional[str] = None,
+                          **kwargs: Any) -> None:
+        """Subagents inherit the parent's locks (their check runs stay their own)."""
+        if parent_session_id and child_session_id:
+            parent = self._parents.get(str(parent_session_id), self.key(parent_session_id))
+            self._parents[str(child_session_id)] = parent
+            while len(self._parents) > 512:
+                self._parents.pop(next(iter(self._parents)))
+
     def on_pre_tool_call(self, tool_name: str = "", args: Any = None, session_id: Optional[str] = None,
                          task_id: Optional[str] = None, **kwargs: Any) -> Optional[Dict[str, str]]:
         try:
             if tool_name in OWN_TOOLS:
                 return None
-            contract = self.get(self.key(session_id, task_id))
+            key = self.key(session_id, task_id)
+            contract = self.get(key) or (self.get(self._parents[key]) if key in self._parents else None)
             if not contract or contract["status"] not in (model.ACTIVE, model.MET):
                 return None
             hit = model.lock_violation(tool_name, args if isinstance(args, dict) else {}, contract["locked"])
@@ -553,6 +565,7 @@ def register(ctx: Any) -> None:
     ctx.register_hook("pre_verify", plugin.on_pre_verify)
     ctx.register_hook("transform_llm_output", plugin.on_transform_llm_output)
     ctx.register_hook("on_session_delete", plugin.on_session_delete)
+    ctx.register_hook("subagent_start", plugin.on_subagent_start)
     ctx.register_tool(name="contract_propose", toolset=TOOLSET, schema=schemas.CONTRACT_PROPOSE,
                       handler=plugin.tool_propose, emoji="📜")
     ctx.register_tool(name="contract_status", toolset=TOOLSET, schema=schemas.CONTRACT_STATUS,

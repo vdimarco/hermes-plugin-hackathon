@@ -61,7 +61,7 @@ marked as hedged.
 ## Install
 
 ```bash
-hermes plugins install go-montreal-go/start-here
+hermes plugins install https://github.com/go-montreal-go/start-here/tree/main/plugins/vouch
 hermes plugins enable vouch
 ```
 
@@ -134,13 +134,17 @@ plugins:
 ## Develop
 
 ```bash
+# from the repository root
 python -m unittest discover -s tests -t . -v     # needs PyYAML
-hermes plugins doctor . --ci
-hermes plugins validate . --install-deps
+hermes plugins doctor plugins/vouch --ci
+hermes plugins validate plugins/vouch --install-deps
 ```
 
-`demo/cart/` is a tiny project with one bug, for trying Vouch by hand. See
-[`docs/demo.md`](docs/demo.md).
+`demo/cart/` at the repository root is a tiny project with one bug, for trying
+Vouch by hand. See [`docs/demo.md`](../../docs/demo.md).
+
+Vouch is part of a set with [Contract](../contract) and
+[Multiverse](../multiverse).
 
 ## License
 

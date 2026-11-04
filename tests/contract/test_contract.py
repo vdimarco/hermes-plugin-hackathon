@@ -135,6 +135,23 @@ class FlowTests(unittest.TestCase):
         self.assertIn("Contract lock", blocked["message"])
         self.assertIsNone(h.pre("write_file", {"path": "cart.py"}))
 
+    def test_subagents_inherit_locks(self):
+        h = H()
+        h.propose(["pytest -q tests/test_cart.py"])
+        h.p.command("approve", session_id=SID)
+        h.p.on_subagent_start(parent_session_id=SID, child_session_id="child-1")
+        h.p.on_subagent_start(parent_session_id="child-1", child_session_id="grandchild")
+        for sid in ("child-1", "grandchild"):
+            blocked = h.p.on_pre_tool_call(tool_name="write_file", session_id=sid,
+                                           args={"path": "/work/.shop.multiverse/ab12cd34/u1/tests/test_cart.py"})
+            self.assertEqual(blocked["action"], "block", sid)
+        self.assertIsNone(h.p.on_pre_tool_call(tool_name="write_file", args={"path": "cart.py"}, session_id="child-1"))
+        # the parent's run fails; a subagent's passing run (in its own worktree) does not count for the parent
+        h.terminal("pytest -q tests/test_cart.py", 1, "1 failed")
+        h.p.on_post_tool_call(tool_name="terminal", args={"command": "pytest -q tests/test_cart.py"},
+                              result=term_result(0, "1 passed"), session_id="child-1")
+        self.assertFalse(h.contract()["results"]["c1"]["passed"])
+
     def test_agent_cannot_replace_an_approved_contract(self):
         h = H()
         h.propose(["pytest -q"])

@@ -189,8 +189,8 @@ def command_write_targets(command: str) -> List[str]:
             words = shlex.split(segment)
         except ValueError:
             words = segment.split()
-        # Skip "VAR=1", "sudo", "env" and similar prefixes.
-        while words and (("=" in words[0] and not words[0].startswith("-")) or words[0] in ("sudo", "env", "command", "time")):
+        # Skip "VAR=1", "env", "time" and similar prefixes.
+        while words and (("=" in words[0] and not words[0].startswith("-")) or words[0] in ("env", "command", "time", "nice", "nohup")):
             words = words[1:]
         if not words:
             continue
