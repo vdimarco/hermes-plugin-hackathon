@@ -7,12 +7,13 @@ from pathlib import Path
 
 import yaml
 
-from tests._load import ROOT, FakeCtx, load
+from tests._load import PLUGINS, ROOT, FakeCtx, load, submodule
 
-vouch = load()
-from vouch import checker  # noqa: E402
-from vouch.claims import extract_claims  # noqa: E402
-from vouch.ledger import Ledger  # noqa: E402
+vouch = load("vouch")
+checker = submodule("vouch", "checker")
+extract_claims = submodule("vouch", "claims").extract_claims
+Ledger = submodule("vouch", "ledger").Ledger
+PLUGIN = PLUGINS / "vouch"
 
 SID = "session-1"
 
@@ -321,7 +322,7 @@ class ToolAndCommandTests(unittest.TestCase):
 
 class ManifestTests(unittest.TestCase):
     def test_register_matches_manifest(self):
-        manifest = yaml.safe_load((ROOT / "plugin.yaml").read_text())
+        manifest = yaml.safe_load((PLUGIN / "plugin.yaml").read_text())
         ctx = FakeCtx()
         vouch.register(ctx)
         self.assertEqual(sorted(ctx.tools), sorted(manifest["provides_tools"]))
@@ -333,8 +334,9 @@ class ManifestTests(unittest.TestCase):
 
     def test_catalog_entry_matches_manifest(self):
         entry = yaml.safe_load((ROOT / "catalog" / "vouch.yaml").read_text())
-        manifest = yaml.safe_load((ROOT / "plugin.yaml").read_text())
+        manifest = yaml.safe_load((PLUGIN / "plugin.yaml").read_text())
         self.assertEqual(entry["name"], manifest["name"])
+        self.assertEqual(entry["subdir"], "plugins/vouch")
         self.assertEqual(entry["version"], manifest["version"])
         self.assertEqual(entry["requires_hermes"], manifest["requires_hermes"])
         self.assertEqual(sorted(entry["capabilities"]["provides_tools"]), sorted(manifest["provides_tools"]))
@@ -347,7 +349,7 @@ class ManifestTests(unittest.TestCase):
         banned_modules = {"subprocess", "socket", "urllib", "http", "requests", "httpx", "aiohttp", "ctypes"}
         banned_names = {"eval", "exec", "compile", "__import__", "setattr"}   # builtins
         banned_attrs = {"system", "popen", "spawn", "execv", "fork"}            # os.*
-        for path in Path(ROOT).glob("*.py"):
+        for path in PLUGIN.glob("*.py"):
             tree = ast.parse(path.read_text())
             for node in ast.walk(tree):
                 if isinstance(node, ast.Import):
