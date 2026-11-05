@@ -1,10 +1,10 @@
 # Draft entry for NousResearch/hermes-agent: plugin-catalog/contract.yaml
-# Set sha to the full 40-character commit before you open the catalog PR.
+# sha pins the merge of PR #1 on main (all three plugins at version 1.0.0).
 name: contract
 title: Contract
 repo: https://github.com/vdimarco/hermes-plugin-hackathon
 subdir: plugins/contract
-sha: 0000000000000000000000000000000000000000
+sha: 3564b40263fcceb20c60c3b2f0b86b87416f181e
 version: "1.0.0"
 description: "A definition of done the agent cannot fake. Before a coding task the agent proposes shell checks and locked paths (usually the tests); you approve them with /contract approve. From then on writes to locked paths are blocked (write_file, patch, shell writes such as sed -i, >, rm, mv, git checkout, and file writes in execute_code), also for subagents the session starts, a turn that edited code cannot finish while a check fails, has not run, or passed before the last edit, and when every check passes the plugin writes a receipt: a hash-chained JSON record with the exit codes, output hashes and git tree id, which `hermes contract verify` checks and can turn into a re-run script. Disclosure — no network calls, no credentials, no telemetry, no background threads. contract_run runs the approved check commands, plus one read-only git command (rev-parse, stash create, status) for the receipt, through the Hermes terminal tool, so approvals and the configured terminal backend apply; the plugin never starts processes itself. Stores contracts (checks, locks, latest results with the last 400 characters of output) and the last 20 receipts in its plugin state under HERMES_HOME/plugin-data; `hermes contract export --out` writes a receipt to the file you name. Blocks tool calls that would change locked paths, adds a short per-turn context note while a contract is open, and appends one status line to replies (configurable)."
 maintainer: vdimarco
