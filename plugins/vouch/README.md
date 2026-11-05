@@ -87,6 +87,14 @@ The model also gets two tools:
   `edits`, `git`, `install`, `deploy` or `failures`.
 * `vouch_check`: check a draft reply before sending it.
 
+## Hermes Desktop
+
+The package ships a desktop half (`desktop/plugin.js`). In Hermes Desktop it adds a
+status-bar chip with the verdicts on the focused chat's latest reply, for example
+`vouch ✓3 ⚠1 ✗1`. Click it to list the flagged claims. When Vouch sends the agent
+back to fix a claim, a toast says so. Turn it on in **Capabilities → Plugins**
+(desktop halves ship off by default).
+
 ## Configure
 
 Settings live under `plugins.entries.vouch.settings` in `config.yaml`:
@@ -118,6 +126,9 @@ plugins:
 * On disk, in the plugin state under `HERMES_HOME/plugin-data/`: totals by claim
   type and the last 50 flagged claims (the claim sentence, up to 160 characters,
   and the reason).
+* To Hermes Desktop windows attached to the same Hermes process, it sends a
+  `plugin.vouch.report` event: counts and up to 6 flagged claims with reasons.
+  The desktop half keeps the last 20 in Desktop plugin storage.
 * It changes the reply only by appending a footer, and only when a claim is not
   supported. It does not block tools, approve anything, or override Hermes core.
 

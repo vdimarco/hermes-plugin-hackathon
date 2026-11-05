@@ -17,6 +17,8 @@ approves them with `/contract approve`. From then on:
   code. `/contract receipt` prints a PR block; `hermes contract verify` checks the
   hashes and `--script` prints a script that runs the checks again.
 
+**Hermes Desktop:** the package ships a `desktop/plugin.js` half (SDK imports only: `@hermes/plugin-sdk`, `react/jsx-runtime`). It adds a Contract pane with the live checklist (pass, fail, stale, not run), the locks and the receipt hash, a status-bar chip, a toast when the lock blocks an edit, and a palette command to copy the receipt hash.
+
 **Hermes surfaces used:** hooks `pre_tool_call`, `post_tool_call`,
 `pre_llm_call`, `pre_verify`, `transform_llm_output`, `on_session_delete`,
 `subagent_start`; tools `contract_propose`, `contract_status`, `contract_run`;
@@ -24,6 +26,7 @@ slash command `/contract`; CLI command `hermes contract`;
 `ctx.dispatch_tool("terminal", ...)` for check runs.
 
 **Disclosure (rule 13):**
+* **Desktop events:** sends plugin.contract.state snapshots (title, checks with commands and reasons, locks, receipt hash) and plugin.contract.blocked events to Desktop windows attached to the same Hermes process; the desktop half keeps the last 20 snapshots in Desktop plugin storage.
 * No network calls, no credentials, no telemetry, no background threads.
 * **Shell commands:** `contract_run` runs the approved check commands, plus one
   read-only git command for the receipt (`rev-parse`, `stash create`, `status`),

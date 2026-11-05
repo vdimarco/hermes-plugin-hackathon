@@ -25,7 +25,7 @@ import time
 from collections import OrderedDict
 from typing import Any, Dict, Optional
 
-from . import checker, schemas
+from . import checker, desktop_events, schemas
 from .claims import KINDS
 from .ledger import Ledger
 
@@ -148,6 +148,7 @@ class Vouch:
             if not report.problems:
                 return None
             self._record_stats(key, report, nudged=True)
+            desktop_events.emit("report", _desktop_report(key, report, stage="draft"))
             return {"action": "continue", "message": checker.format_nudge(report)}
         except Exception:
             logger.debug("vouch: pre_verify failed", exc_info=True)
@@ -162,6 +163,8 @@ class Vouch:
             report = checker.check_reply(response_text, self.ledger.events(key), self.kinds())
             self._remember(key, report)
             self._record_stats(key, report)
+            if report.findings:
+                desktop_events.emit("report", _desktop_report(key, report, stage="final"))
             if not self.footer_enabled():
                 return None
             footer = checker.format_footer(report, show_verified=self.footer_verified())
@@ -235,6 +238,18 @@ class Vouch:
 # ---------------------------------------------------------------------------
 # helpers
 # ---------------------------------------------------------------------------
+
+def _desktop_report(key: str, report: checker.Report, stage: str) -> Dict[str, Any]:
+    """The payload the Desktop half shows: counts plus the claims that need attention."""
+    return {
+        "session": key,
+        "stage": stage,          # "draft": the agent was sent back; "final": the reply the user got
+        "ts": int(time.time()),
+        "counts": report.counts(),
+        "problems": [{"kind": f.kind, "status": f.status, "label": checker._label(f).strip("“”"),
+                      "reason": f.reason[:200], "claim": f.claim[:120]} for f in report.problems[:6]],
+    }
+
 
 def _truthy(value: Any) -> bool:
     if isinstance(value, str):

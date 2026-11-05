@@ -20,6 +20,8 @@ With `delegation.backend: multiverse`, each attempt can use its own model and
 provider, so a race compares models as well as approaches. Tasks without a
 Multiverse marker take the default route.
 
+**Hermes Desktop:** the package ships a `desktop/plugin.js` half (SDK imports only: `@hermes/plugin-sdk`, `react/jsx-runtime`). It adds a live race board pane (each attempt's status and tool-call count, then checks passed, diff and the winner), a status-bar chip while racing, and a toast when judging ends.
+
 **Hermes surfaces used:** hooks `subagent_start`, `subagent_stop`,
 `pre_tool_call` (`modify` and `block`); tools `multiverse_race`,
 `multiverse_open`, `multiverse_judge`, `multiverse_adopt`, `multiverse_close`;
@@ -27,6 +29,7 @@ a delegation provider (`multiverse`); slash command `/multiverse`; CLI command
 `hermes multiverse`; `ctx.dispatch_tool` for `terminal` and `delegate_task`.
 
 **Disclosure (rule 13):**
+* **Desktop events:** sends plugin.multiverse.run snapshots (goal, checks, per-attempt label, model, approach, status, tool-call count, scores and diff stats; no subagent text) to Desktop windows attached to the same Hermes process, at most once a second while attempts run; the desktop half keeps the last 10 runs in Desktop plugin storage.
 * No network calls of its own, no credentials, no telemetry, no background threads.
 * **Shell commands:** runs `git` (`rev-parse`, `stash create`,
   `worktree add/remove/prune`, `add -A` inside the worktrees, `diff`, `apply`),

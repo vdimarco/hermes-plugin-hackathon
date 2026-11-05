@@ -30,7 +30,9 @@ class SuiteRules(unittest.TestCase):
                             self.assertNotIn(alias.name.split(".")[0], BANNED_MODULES, where)
                     elif isinstance(node, ast.ImportFrom) and node.module and node.level == 0:
                         self.assertNotIn(node.module.split(".")[0], BANNED_MODULES, where)
-                        self.assertFalse(node.module.startswith("hermes_cli"), where)
+                        if node.module.startswith("hermes_cli"):
+                            # the one Hermes module the docs name for pushing events to Desktop
+                            self.assertEqual(node.module, "hermes_cli.plugin_events", where)
                     elif isinstance(node, ast.Call):
                         fn = node.func
                         if isinstance(fn, ast.Name):

@@ -303,6 +303,28 @@ def rank(run: Dict[str, Any]) -> List[Dict[str, Any]]:
     return ordered
 
 
+def public_run(run: Dict[str, Any]) -> Dict[str, Any]:
+    """The run as the Desktop half shows it: no summaries, no outputs, short strings."""
+    out = {k: run.get(k) for k in ("id", "status", "winner", "base_kind", "session", "created_at")}
+    out["goal"] = (run.get("goal") or "")[:200]
+    out["base"] = (run.get("base") or "")[:12]
+    out["checks"] = list(run.get("checks") or [])[:12]
+    out["adopted"] = run.get("adopted")
+    universes = []
+    for u in sorted(run["universes"].values(), key=score):
+        s = u.get("score") or {}
+        d = u.get("diff") or {}
+        universes.append({
+            "label": u["label"], "model": u.get("model") or "", "approach": u["approach"][:120],
+            "status": u.get("status"), "calls": int(u.get("calls", 0)),
+            "passed": s.get("passed"), "total": s.get("total"), "all_pass": s.get("all_pass"),
+            "files": d.get("files"), "insertions": d.get("insertions"), "deletions": d.get("deletions"),
+            "duration_ms": u.get("duration_ms"),
+        })
+    out["universes"] = universes
+    return out
+
+
 def scoreboard(run: Dict[str, Any]) -> str:
     ordered = sorted(run["universes"].values(), key=score)
     lines = [f"**Multiverse {run['id']}** · {len(ordered)} universes · {len(run['checks'])} checks · base {run['base_kind']} `{run['base'][:10]}`", "",

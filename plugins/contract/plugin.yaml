@@ -1,5 +1,5 @@
 name: contract
-version: 1.0.0
+version: 1.1.0
 description: >-
   Definition of done that the agent cannot fake. Before a coding task, the agent
   proposes shell checks and locked paths; you approve them with /contract approve.

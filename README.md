@@ -8,6 +8,11 @@ Three Hermes Agent plugins that make an agent's "done" something you can check.
 | [**Contract**](plugins/contract) | You approve the definition of done before work starts. The agent cannot edit the tests, cannot finish while a check fails, and ships a receipt that a reviewer can check. | `pre_tool_call`, `pre_verify`, `pre_llm_call`, `post_tool_call` |
 | [**Multiverse**](plugins/multiverse) | Race 2 to 6 attempts (approaches or models) in separate git worktrees, judge them with the same checks, adopt the winner. | `subagent_start`, `pre_tool_call` (path pinning), delegation provider |
 
+Each plugin also ships a Hermes Desktop half (`desktop/plugin.js`): a status-bar
+chip for Vouch, a live checklist pane for Contract, and a live race board for
+Multiverse. The Python side pushes state with `broadcast_plugin_event`; the
+desktop side only listens.
+
 Each plugin works alone. Together they cover a task from start to finish:
 
 ```
@@ -36,6 +41,7 @@ For local work, link a folder into `~/.hermes/plugins/<name>/` instead.
 
 ```
 plugins/<name>/     one Hermes plugin per folder (plugin.yaml + __init__.py + README)
+plugins/<name>/desktop/plugin.js   its Hermes Desktop half
 catalog/<name>.yaml entries for NousResearch/hermes-agent plugin-catalog/ (pinned sha)
 docs/catalog-prs/   the PR description for each catalog entry
 scripts/            open-catalog-prs.sh: validate, then open one catalog PR per plugin
@@ -55,7 +61,8 @@ scripts/open-catalog-prs.sh --open   # pushes to your hermes-agent fork and open
 ## Test
 
 ```bash
-python -m unittest discover -s tests -t . -v     # needs PyYAML, git and bash
+python -m unittest discover -s tests -t . -v     # needs PyYAML, git and bash (and node for the desktop tests)
+node --import ./tests/desktop/register.mjs --test tests/desktop/test.mjs
 for p in plugins/*/; do hermes plugins validate "$p" --install-deps; done
 ```
 
