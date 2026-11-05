@@ -36,10 +36,20 @@ For local work, link a folder into `~/.hermes/plugins/<name>/` instead.
 
 ```
 plugins/<name>/     one Hermes plugin per folder (plugin.yaml + __init__.py + README)
-catalog/<name>.yaml draft entries for NousResearch/hermes-agent plugin-catalog/
+catalog/<name>.yaml entries for NousResearch/hermes-agent plugin-catalog/ (pinned sha)
+docs/catalog-prs/   the PR description for each catalog entry
+scripts/            open-catalog-prs.sh: validate, then open one catalog PR per plugin
 tests/              unit tests per plugin, suite rules, and real-git integration tests
 demo/cart/          a small project with one bug, for demos
 docs/demo.md        the 90-second demo plan
+```
+
+## Submit to the Hermes catalog
+
+```bash
+gh auth login                        # as the owner of this repo
+scripts/open-catalog-prs.sh          # dry run: validates each plugin at the pinned sha, shows the PRs
+scripts/open-catalog-prs.sh --open   # pushes to your hermes-agent fork and opens one PR per plugin
 ```
 
 ## Test

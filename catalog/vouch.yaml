@@ -1,11 +1,10 @@
 # Draft entry for NousResearch/hermes-agent: plugin-catalog/vouch.yaml
-# Before you open the catalog PR, set sha to the full 40-character commit of
-# the release on the default branch (git rev-parse HEAD).
+# sha pins the merge of PR #1 on main (all three plugins at version 1.0.0).
 name: vouch
 title: Vouch
 repo: https://github.com/vdimarco/hermes-plugin-hackathon
 subdir: plugins/vouch
-sha: 0000000000000000000000000000000000000000
+sha: 3564b40263fcceb20c60c3b2f0b86b87416f181e
 version: "1.0.0"
 description: "Checks the agent's \"done\" against the tool record: finds claims such as \"all tests pass\", \"I updated src/app.py\", \"committed\", \"pushed\", \"installed\" or \"deployed\" in the final reply and matches each one to the session's commands, exit codes and file writes. A contradicted, stale or unsupported claim sends the agent back once (pre_verify, after code edits) with the exact mismatch, and claims that are still unsupported get a short footer in the reply. Catches exit codes hidden by pipes (pytest | tail), test runs that found no tests, and edits made after the last passing run. Disclosure — no network calls, no shell commands, no subprocesses, no background threads, no credentials, no telemetry. Keeps an in-memory record per session (tool name, command text, paths, exit code, last 600 characters of output; never file contents). Writes totals and the last 50 flagged claims (claim sentence up to 160 characters and the reason) to its plugin state under HERMES_HOME/plugin-data. Appends a footer to replies only when a claim is not supported (configurable)."
 maintainer: vdimarco

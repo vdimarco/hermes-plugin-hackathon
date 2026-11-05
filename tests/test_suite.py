@@ -57,6 +57,13 @@ class SuiteRules(unittest.TestCase):
             self.assertIn("Disclosure", entry["description"])
             self.assertTrue((plugin / "README.md").is_file(), f"{plugin.name} needs a README")
             self.assertRegex(manifest["requires_hermes"], r"^>=\d+\.\d+\.\d+$")
+            self.assertRegex(entry["sha"], r"^[0-9a-f]{40}$")
+            self.assertNotEqual(entry["sha"], "0" * 40, f"{plugin.name}: pin a real commit")
+            self.assertEqual(entry["version"], manifest["version"])
+            body = ROOT / "docs" / "catalog-prs" / f"{plugin.name}.md"
+            self.assertTrue(body.is_file(), f"{plugin.name}: needs a catalog PR body")
+            self.assertIn(entry["sha"], body.read_text())
+            self.assertIn("Disclosure (rule 13)", body.read_text())
 
 
 if __name__ == "__main__":
