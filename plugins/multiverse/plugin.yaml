@@ -5,11 +5,11 @@ description: >-
   worktree and one subagent per attempt, each subagent pinned to its own worktree,
   the same checks run in every worktree, a scoreboard, and one call to apply the
   winner. Optional delegation backend gives each attempt its own model.
-author: go-montreal-go
+author: vdimarco
 manifest_version: 2
 api_version: 1
 license: MIT
-homepage: https://github.com/go-montreal-go/start-here
+homepage: https://github.com/vdimarco/hermes-plugin-hackathon
 tags: [coding, delegation, subagents, git, best-of-n]
 requires_hermes: ">=0.22.0"
 provides_tools:

@@ -6,11 +6,11 @@ description: >-
   and matches each one to the commands, exit codes and file writes of the session.
   A false or unsupported claim sends the agent back to fix it once, and what is
   still unsupported gets a short footer in the reply.
-author: go-montreal-go
+author: vdimarco
 manifest_version: 2
 api_version: 1
 license: MIT
-homepage: https://github.com/go-montreal-go/start-here
+homepage: https://github.com/vdimarco/hermes-plugin-hackathon
 tags: [verification, coding, trust, hooks]
 requires_hermes: ">=0.22.0"
 provides_tools:

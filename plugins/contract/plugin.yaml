@@ -5,11 +5,11 @@ description: >-
   proposes shell checks and locked paths; you approve them with /contract approve.
   The agent then cannot edit the locked tests, cannot finish while a check fails,
   and gets a receipt (hash chain plus git tree id) when every check passes.
-author: go-montreal-go
+author: vdimarco
 manifest_version: 2
 api_version: 1
 license: MIT
-homepage: https://github.com/go-montreal-go/start-here
+homepage: https://github.com/vdimarco/hermes-plugin-hackathon
 tags: [verification, coding, tests, trust, hooks]
 requires_hermes: ">=0.22.0"
 provides_tools:

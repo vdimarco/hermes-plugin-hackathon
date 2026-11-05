@@ -61,7 +61,7 @@ marked as hedged.
 ## Install
 
 ```bash
-hermes plugins install https://github.com/go-montreal-go/start-here/tree/main/plugins/vouch
+hermes plugins install https://github.com/vdimarco/hermes-plugin-hackathon/tree/main/plugins/vouch
 hermes plugins enable vouch
 ```
 
@@ -141,10 +141,10 @@ hermes plugins validate plugins/vouch --install-deps
 ```
 
 `demo/cart/` at the repository root is a tiny project with one bug, for trying
-Vouch by hand. See [`docs/demo.md`](https://github.com/go-montreal-go/start-here/blob/main/docs/demo.md).
+Vouch by hand. See [`docs/demo.md`](https://github.com/vdimarco/hermes-plugin-hackathon/blob/main/docs/demo.md).
 
-Vouch is part of a set with [Contract](https://github.com/go-montreal-go/start-here/tree/main/plugins/contract) and
-[Multiverse](https://github.com/go-montreal-go/start-here/tree/main/plugins/multiverse).
+Vouch is part of a set with [Contract](https://github.com/vdimarco/hermes-plugin-hackathon/tree/main/plugins/contract) and
+[Multiverse](https://github.com/vdimarco/hermes-plugin-hackathon/tree/main/plugins/multiverse).
 
 ## License
 

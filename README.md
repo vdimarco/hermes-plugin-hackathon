@@ -24,9 +24,9 @@ terminal backend apply.
 ## Install
 
 ```bash
-hermes plugins install https://github.com/go-montreal-go/start-here/tree/main/plugins/vouch
-hermes plugins install https://github.com/go-montreal-go/start-here/tree/main/plugins/contract
-hermes plugins install https://github.com/go-montreal-go/start-here/tree/main/plugins/multiverse
+hermes plugins install https://github.com/vdimarco/hermes-plugin-hackathon/tree/main/plugins/vouch
+hermes plugins install https://github.com/vdimarco/hermes-plugin-hackathon/tree/main/plugins/contract
+hermes plugins install https://github.com/vdimarco/hermes-plugin-hackathon/tree/main/plugins/multiverse
 hermes plugins enable vouch contract multiverse
 ```
 
