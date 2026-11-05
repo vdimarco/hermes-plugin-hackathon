@@ -17,11 +17,14 @@ each one to the commands, exit codes and file writes of the session.
   after the last passing run, a rejected `git push`, and a claimed edit to a file
   that was only read.
 
+**Hermes Desktop:** the package ships a `desktop/plugin.js` half (SDK imports only: `@hermes/plugin-sdk`, `react/jsx-runtime`). It adds a status-bar chip with the verdict counts of the focused chat; a click lists the flagged claims.
+
 **Hermes surfaces used:** hooks `post_tool_call`, `pre_verify`,
 `transform_llm_output`, `on_session_delete`; tools `vouch_evidence`,
 `vouch_check`; slash command `/vouch`; CLI command `hermes vouch`.
 
 **Disclosure (rule 13):**
+* **Desktop events:** sends a plugin.vouch.report event (counts and up to 6 flagged claims with reasons) to Desktop windows attached to the same Hermes process; the desktop half keeps the last 20 in Desktop plugin storage.
 * No network calls, no shell commands, no subprocesses, no background threads, no
   credentials, no telemetry.
 * Keeps an in-memory record per session (at most 64 sessions, 400 events each):

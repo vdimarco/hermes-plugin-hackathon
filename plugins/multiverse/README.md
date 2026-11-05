@@ -62,6 +62,14 @@ delegation:
 
 For tasks without a Multiverse marker, the backend acts like the default one.
 
+## Hermes Desktop
+
+The package ships a desktop half (`desktop/plugin.js`). In Hermes Desktop it adds a
+**Multiverse** race board: while the subagents work, each universe shows its status
+and its tool-call count; after judging, it shows checks passed, the diff and 🏆 on
+the winner. A status-bar chip shows `racing 2/3 · 41 calls`, and a toast names the
+winner. Turn it on in **Capabilities → Plugins** (desktop halves ship off by default).
+
 ## Tools and commands
 
 | Tool | What it does |
@@ -90,6 +98,11 @@ receipt in the real tree.
   terminal tool**, so approvals and your terminal backend apply.
 * Starts subagents through `delegate_task`. Each attempt costs tokens on the
   model it uses.
+* Sends `plugin.multiverse.run` snapshots (goal, checks, and per universe: label,
+  model, approach, status, tool-call count, scores, diff stats; no subagent text)
+  to Desktop windows attached to the same Hermes process, at most once a second
+  while attempts run. The desktop half keeps the last 10 runs in Desktop plugin
+  storage.
 * Stores run metadata (goal, checks, worktree paths, scores, the last 1500
   characters of each subagent summary) in its plugin state.
 

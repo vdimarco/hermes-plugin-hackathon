@@ -28,12 +28,12 @@ import time
 from collections import OrderedDict
 from typing import Any, Dict, List, Optional
 
-from . import model, schemas
+from . import desktop_events, model, schemas
 from .ledger import Ledger
 
 logger = logging.getLogger(__name__)
 
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 TOOLSET = "contract"
 OWN_TOOLS = {"contract_propose", "contract_status", "contract_run"}
 MAX_CONTRACTS = 32
@@ -130,6 +130,35 @@ class ContractPlugin:
                 self._contracts[key] = contract
                 self._contracts.move_to_end(key)
             self._save()
+        self._publish(key, contract)
+
+    def snapshot(self, key: str, contract: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+        """What the Desktop half shows for one session."""
+        if not contract or contract.get("status") == model.CANCELLED:
+            return {"session": key, "status": "none", "ts": int(time.time())}
+        last_write = self.last_write_seq(key)
+        receipt = contract.get("receipt") or {}
+        return {
+            "session": key,
+            "id": contract["id"],
+            "title": contract["title"],
+            "status": contract["status"],
+            "summary": model.summary_line(contract, last_write),
+            "checks": [{"id": c["id"], "name": c["name"], "command": c["command"], "state": state,
+                        "reason": (r or {}).get("reason", "")}
+                       for c, state, r in model.check_states(contract, last_write)],
+            "locked": contract["locked"][:16],
+            "approved_by": contract.get("approved_by"),
+            "receipt": {"hash": receipt.get("receipt_hash", ""), "tree": (receipt.get("workspace") or {}).get("tree", ""),
+                        "stale": bool(receipt.get("stale"))} if receipt else None,
+            "ts": int(time.time()),
+        }
+
+    def _publish(self, key: str, contract: Optional[Dict[str, Any]]) -> None:
+        try:
+            desktop_events.emit("state", self.snapshot(key, contract))
+        except Exception:
+            logger.debug("contract: snapshot failed", exc_info=True)
 
     # -- session helpers ------------------------------------------------------
     @staticmethod
@@ -205,12 +234,15 @@ class ContractPlugin:
         try:
             key = self.key(session_id, task_id)
             event = self.ledger.record(key, tool_name, args, result, status=status, turn_id=turn_id or "")
-            if tool_name != "terminal":
-                return
             contract = self.get(key)
-            if contract:
+            if not contract:
+                return
+            recorded = []
+            if tool_name == "terminal":
                 output = str(_parse(result).get("output") or "")
-                self._record_result(key, contract, event, output, "observed")
+                recorded = self._record_result(key, contract, event, output, "observed")
+            if not recorded and event.is_write and event.ok and contract.get("results"):
+                self._publish(key, contract)  # a write can turn passing checks stale
         except Exception:
             logger.debug("contract: post_tool_call failed", exc_info=True)
 
@@ -236,6 +268,8 @@ class ContractPlugin:
             if not hit:
                 return None
             path, lock = hit
+            desktop_events.emit("blocked", {"session": key, "tool": tool_name, "path": str(path)[:300],
+                                            "lock": lock, "title": contract["title"], "ts": int(time.time())})
             return {"action": "block", "message": (
                 f"Contract lock: {path} is covered by the approved contract “{contract['title']}” (lock '{lock}'). "
                 "Make the checks pass by fixing the code, not the checks. If the contract is wrong, tell the user; "

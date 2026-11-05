@@ -78,6 +78,18 @@ proof, and the script makes that one command.
 
 Model tools: `contract_propose`, `contract_status`, `contract_run`.
 
+## Hermes Desktop
+
+The package ships a desktop half (`desktop/plugin.js`). In Hermes Desktop it adds:
+
+* a **Contract** pane with the live checklist of the focused chat (✅ pass, ❌ fail,
+  ♻️ stale, ⏳ not run), the locks, and the receipt hash with a copy button;
+* a status-bar chip, for example `contract 2/3`;
+* a toast when the lock blocks an edit;
+* the palette command **Contract: copy receipt hash**.
+
+Turn it on in **Capabilities → Plugins** (desktop halves ship off by default).
+
 ## Configure
 
 ```yaml
@@ -102,6 +114,10 @@ plugins:
   output) and the last 20 receipts in its plugin state under
   `HERMES_HOME/plugin-data/`. `hermes contract export --out FILE` writes a
   receipt to the file you name.
+* Sends `plugin.contract.state` snapshots (title, checks with commands and
+  reasons, locks, receipt hash) and `plugin.contract.blocked` events to Desktop
+  windows attached to the same Hermes process. The desktop half keeps the last
+  20 snapshots in Desktop plugin storage.
 * Blocks tool calls that would change locked paths. It never approves anything.
 
 ## Limits

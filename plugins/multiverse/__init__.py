@@ -21,14 +21,15 @@ from __future__ import annotations
 import json
 import logging
 import threading
+import time
 from collections import OrderedDict
 from typing import Any, Dict, Optional, Tuple
 
-from . import runs, schemas
+from . import desktop_events, runs, schemas
 
 logger = logging.getLogger(__name__)
 
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 TOOLSET = "multiverse"
 MAX_RUNS = 16
 
@@ -50,6 +51,7 @@ class Multiverse:
         self.runs: "OrderedDict[str, Dict[str, Any]]" = OrderedDict()
         self.bindings: Dict[str, Tuple[str, str]] = {}   # child session/subagent id -> (run, label)
         self._loaded = False
+        self._last_publish: Dict[str, float] = {}
 
     # -- persistence ----------------------------------------------------------
     def _load(self) -> None:
@@ -63,13 +65,26 @@ class Multiverse:
         except Exception:
             logger.debug("multiverse: cannot read state", exc_info=True)
 
-    def _save(self) -> None:
+    def _save(self, run: Optional[Dict[str, Any]] = None) -> None:
         try:
             while len(self.runs) > MAX_RUNS:
                 self.runs.popitem(last=False)
             self.ctx.state.set("runs", list(self.runs.values()))
         except Exception:
             logger.debug("multiverse: cannot write state", exc_info=True)
+        if run is not None:
+            self._publish(run, force=True)
+
+    def _publish(self, run: Dict[str, Any], force: bool = False) -> None:
+        """Send the run to Desktop. Live tool-call counts are throttled to one update a second."""
+        now = time.monotonic()
+        if not force and now - self._last_publish.get(run["id"], 0.0) < 1.0:
+            return
+        self._last_publish[run["id"]] = now
+        try:
+            desktop_events.emit("run", runs.public_run(run))
+        except Exception:
+            logger.debug("multiverse: run snapshot failed", exc_info=True)
 
     def get_run(self, run_id: str = "") -> Optional[Dict[str, Any]]:
         with self._lock:
@@ -113,7 +128,7 @@ class Multiverse:
                         if str(ident) not in u["children"]:
                             u["children"].append(str(ident))
                 u["status"] = "running"
-                self._save()
+                self._save(run)
         except Exception:
             logger.debug("multiverse: subagent_start failed", exc_info=True)
 
@@ -129,7 +144,7 @@ class Multiverse:
                 u["status"] = "failed" if status in ("failed", "error", "interrupted", "timeout") else "done"
                 u["summary"] = str(child_summary or "")[-1500:]
                 u["duration_ms"] = int(duration_ms or 0)
-                self._save()
+                self._save(run)
         except Exception:
             logger.debug("multiverse: subagent_stop failed", exc_info=True)
 
@@ -149,6 +164,8 @@ class Multiverse:
             run, u = pair
             if run.get("status") in ("closed", "adopted"):
                 return {"action": "block", "message": "[Multiverse] This run is closed; its worktree is gone."}
+            u["calls"] = int(u.get("calls", 0)) + 1
+            self._publish(run)
             return runs.rewrite(tool_name, args if isinstance(args, dict) else {}, run, u)
         except Exception:
             logger.debug("multiverse: pre_tool_call failed", exc_info=True)
@@ -167,10 +184,11 @@ class Multiverse:
         code, out = self._sh(runs.create_cmd(run), ids)
         if code != 0:
             raise runs.RunError(f"could not create the worktrees (exit {code}): {out[-400:]}")
+        run["session"] = str(ids.get("session_id") or ids.get("task_id") or "")
         with self._lock:
             self._load()
             self.runs[run["id"]] = run
-            self._save()
+            self._save(run)
         return run
 
     def tool_open(self, args: Dict[str, Any], task_id: Optional[str] = None, session_id: Optional[str] = None,
@@ -228,9 +246,10 @@ class Multiverse:
             u["diff"] = runs.parse_diff(out)
             if u["status"] in ("open", "running"):
                 u["status"] = "done"
+            self._publish(run, force=True)
         runs.rank(run)
         with self._lock:
-            self._save()
+            self._save(run)
         board = runs.scoreboard(run)
         return json.dumps({
             "run": run["id"],
@@ -274,7 +293,7 @@ class Multiverse:
                 self._sh(runs.close_cmd(run), ids)
                 run["status"] = "adopted"
             with self._lock:
-                self._save()
+                self._save(run)
             return json.dumps({"adopted": label, "changed": out.strip().splitlines()[-40:],
                                "next": "Run the checks once more in the real tree, then report to the user."})
         except Exception as exc:
@@ -289,7 +308,7 @@ class Multiverse:
             self._sh(runs.close_cmd(run), {"task_id": task_id, "session_id": session_id})
             run["status"] = "closed"
             with self._lock:
-                self._save()
+                self._save(run)
             return json.dumps({"closed": run["id"]})
         except Exception as exc:
             return json.dumps({"error": f"multiverse_close failed: {exc}"})
