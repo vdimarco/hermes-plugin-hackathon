@@ -1,0 +1,47 @@
+name: contract
+version: 1.0.0
+description: >-
+  Definition of done that the agent cannot fake. Before a coding task, the agent
+  proposes shell checks and locked paths; you approve them with /contract approve.
+  The agent then cannot edit the locked tests, cannot finish while a check fails,
+  and gets a receipt (hash chain plus git tree id) when every check passes.
+author: vdimarco
+manifest_version: 2
+api_version: 1
+license: MIT
+homepage: https://github.com/vdimarco/hermes-plugin-hackathon
+tags: [verification, coding, tests, trust, hooks]
+requires_hermes: ">=0.22.0"
+provides_tools:
+  - contract_propose
+  - contract_status
+  - contract_run
+provides_hooks:
+  - post_tool_call
+  - pre_tool_call
+  - pre_llm_call
+  - pre_verify
+  - transform_llm_output
+  - on_session_delete
+  - subagent_start
+config_schema:
+  require_approval:
+    type: bool
+    default: true
+    label: Require approval
+    description: A contract the agent proposes is enforced only after /contract approve. Turn off for unattended runs.
+  lock_tests:
+    type: bool
+    default: true
+    label: Lock test files
+    description: Also lock common test paths (tests/*, test_*.py, *.test.*, *.spec.*, conftest.py).
+  max_nudges:
+    type: int
+    default: 2
+    label: Max gate nudges per turn
+    description: How many times one turn can be sent back while a check fails. Hermes also caps this with agent.max_verify_nudges.
+  footer:
+    type: bool
+    default: true
+    label: Reply footer
+    description: Add one status line about the contract under replies.
