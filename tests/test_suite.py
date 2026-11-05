@@ -68,5 +68,28 @@ class SuiteRules(unittest.TestCase):
             self.assertIn("Disclosure (rule 13)", body.read_text())
 
 
+class PinnedCommit(unittest.TestCase):
+    """The catalog sha must point at code with the same version (skipped when history is shallow)."""
+
+    def test_pinned_code_matches_entry_version(self):
+        import shutil
+        import subprocess
+
+        if not shutil.which("git"):
+            self.skipTest("needs git")
+        checked = 0
+        for plugin in sorted(p for p in PLUGINS.iterdir() if (p / "plugin.yaml").is_file()):
+            entry = yaml.safe_load((ROOT / "catalog" / f"{plugin.name}.yaml").read_text())
+            r = subprocess.run(["git", "-C", str(ROOT), "show", f"{entry['sha']}:{entry['subdir']}/plugin.yaml"],
+                               capture_output=True, text=True)
+            if r.returncode != 0:
+                continue  # sha not in this (shallow) clone
+            pinned = yaml.safe_load(r.stdout)
+            self.assertEqual(str(pinned["version"]), str(entry["version"]), f"{plugin.name}: re-pin the catalog sha")
+            checked += 1
+        if not checked:
+            self.skipTest("pinned commit not in this clone")
+
+
 if __name__ == "__main__":
     unittest.main()
