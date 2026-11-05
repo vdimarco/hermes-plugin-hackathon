@@ -1,7 +1,7 @@
 ## What does this PR do?
 
 Adds **Multiverse** to the plugin catalog (`plugin-catalog/multiverse.yaml`), pinned to
-`vdimarco/hermes-plugin-hackathon@3564b40263fcceb20c60c3b2f0b86b87416f181e`, subdir `plugins/multiverse`.
+`vdimarco/hermes-plugin-hackathon@93f6d6b69d4c18bb9d8973f127f9f5b84fe0cf0f`, subdir `plugins/multiverse`.
 
 Multiverse is best-of-N for coding agents, with real checks. `multiverse_race`:
 

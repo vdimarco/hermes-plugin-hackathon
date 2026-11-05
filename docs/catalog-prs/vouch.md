@@ -1,7 +1,7 @@
 ## What does this PR do?
 
 Adds **Vouch** to the plugin catalog (`plugin-catalog/vouch.yaml`), pinned to
-`vdimarco/hermes-plugin-hackathon@3564b40263fcceb20c60c3b2f0b86b87416f181e`, subdir `plugins/vouch`.
+`vdimarco/hermes-plugin-hackathon@93f6d6b69d4c18bb9d8973f127f9f5b84fe0cf0f`, subdir `plugins/vouch`.
 
 Vouch checks the agent's "done" against the tool record. It finds claims of
 finished work in the final reply ("all tests pass", "I updated `src/app.py`",
