@@ -68,6 +68,26 @@ class SuiteRules(unittest.TestCase):
             self.assertIn("Disclosure (rule 13)", body.read_text())
 
 
+class CatalogImages(unittest.TestCase):
+    """Catalog rule: `image` is an https image on a GitHub host, 2:1, pinned to the entry's sha."""
+
+    def test_card_images(self):
+        import struct
+
+        for plugin in sorted(p for p in PLUGINS.iterdir() if (p / "plugin.yaml").is_file()):
+            entry = yaml.safe_load((ROOT / "catalog" / f"{plugin.name}.yaml").read_text())
+            url = entry.get("image", "")
+            prefix = f"https://raw.githubusercontent.com/vdimarco/hermes-plugin-hackathon/{entry['sha']}/"
+            self.assertTrue(url.startswith(prefix), f"{plugin.name}: image must be pinned to the entry sha")
+            local = ROOT / url[len(prefix):]
+            self.assertTrue(local.is_file(), f"{plugin.name}: {local} is missing")
+            head = local.read_bytes()[:24]
+            self.assertEqual(head[:8], b"\x89PNG\r\n\x1a\n", f"{plugin.name}: not a PNG")
+            width, height = struct.unpack(">II", head[16:24])
+            self.assertEqual(width, 2 * height, f"{plugin.name}: card must be 2:1, got {width}x{height}")
+            self.assertLess(local.stat().st_size, 1_000_000, f"{plugin.name}: keep the card under 1 MB")
+
+
 class PinnedCommit(unittest.TestCase):
     """The catalog sha must point at code with the same version (skipped when history is shallow)."""
 
@@ -86,6 +106,10 @@ class PinnedCommit(unittest.TestCase):
                 continue  # sha not in this (shallow) clone
             pinned = yaml.safe_load(r.stdout)
             self.assertEqual(str(pinned["version"]), str(entry["version"]), f"{plugin.name}: re-pin the catalog sha")
+            if entry.get("image"):
+                path = entry["image"].split(f"/{entry['sha']}/", 1)[1]
+                exists = subprocess.run(["git", "-C", str(ROOT), "cat-file", "-e", f"{entry['sha']}:{path}"])
+                self.assertEqual(exists.returncode, 0, f"{plugin.name}: {path} is not in the pinned commit")
             checked += 1
         if not checked:
             self.skipTest("pinned commit not in this clone")
