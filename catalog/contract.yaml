@@ -1,16 +1,17 @@
 # Draft entry for NousResearch/hermes-agent: plugin-catalog/contract.yaml
-# sha pins the merge of PR #3 on main (all three plugins at 1.1.0, with Desktop halves).
+# sha pins the commit that adds the card images; the plugin code there is 1.1.0, as merged in PR #3.
 name: contract
 title: Contract
 repo: https://github.com/vdimarco/hermes-plugin-hackathon
 subdir: plugins/contract
-sha: 93f6d6b69d4c18bb9d8973f127f9f5b84fe0cf0f
+sha: 9dd8b2fd6a8e78fd37aec7a619bc5f3d7d9e6b06
 version: "1.1.0"
 description: "A definition of done the agent cannot fake. Before a coding task the agent proposes shell checks and locked paths (usually the tests); you approve them with /contract approve. From then on writes to locked paths are blocked (write_file, patch, shell writes such as sed -i, >, rm, mv, git checkout, and file writes in execute_code), also for subagents the session starts, a turn that edited code cannot finish while a check fails, has not run, or passed before the last edit, and when every check passes the plugin writes a receipt: a hash-chained JSON record with the exit codes, output hashes and git tree id, which `hermes contract verify` checks and can turn into a re-run script. Hermes Desktop: a Contract pane with the live checklist (pass, fail, stale, not run), the locks and the receipt hash, a status-bar chip, a toast when the lock blocks an edit, and a palette command to copy the receipt hash. Disclosure — no network calls, no credentials, no telemetry, no background threads. contract_run runs the approved check commands, plus one read-only git command (rev-parse, stash create, status) for the receipt, through the Hermes terminal tool, so approvals and the configured terminal backend apply; the plugin never starts processes itself. Stores contracts (checks, locks, latest results with the last 400 characters of output) and the last 20 receipts in its plugin state under HERMES_HOME/plugin-data; `hermes contract export --out` writes a receipt to the file you name. Blocks tool calls that would change locked paths, adds a short per-turn context note while a contract is open, and appends one status line to replies (configurable). Sends plugin.contract.state snapshots (title, checks with commands and reasons, locks, receipt hash) and plugin.contract.blocked events to Desktop windows attached to the same Hermes process; the desktop half keeps the last 20 snapshots in Desktop plugin storage."
 maintainer: vdimarco
 tier: community
 category: tools
 requires_hermes: ">=0.22.0"
+image: "https://raw.githubusercontent.com/vdimarco/hermes-plugin-hackathon/9dd8b2fd6a8e78fd37aec7a619bc5f3d7d9e6b06/assets/catalog/contract.png"
 readme: true
 platforms: []
 capabilities:
