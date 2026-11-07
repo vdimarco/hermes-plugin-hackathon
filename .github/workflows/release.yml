@@ -1,0 +1,45 @@
+name: release
+
+# Run from the Actions tab (Run workflow). It checks that all three plugins carry the
+# version you give, then creates the GitHub release v<version> at the target commit,
+# with docs/releases/v<version>.md as the notes.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version without the v, for example 1.1.0"
+        required: true
+      target:
+        description: "Full commit sha to tag (leave empty for the latest main)"
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Check the version and the target
+        env:
+          VERSION: ${{ inputs.version }}
+          TARGET: ${{ inputs.target }}
+        run: |
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "version must look like 1.1.0"; exit 1; }
+          REF="${TARGET:-$GITHUB_SHA}"
+          [[ "$REF" =~ ^[0-9a-f]{40}$ ]] || { echo "target must be a full 40-character sha"; exit 1; }
+          git merge-base --is-ancestor "$REF" origin/main || { echo "$REF is not on main"; exit 1; }
+          for p in vouch contract multiverse; do
+            git show "$REF:plugins/$p/plugin.yaml" | grep -qx "version: $VERSION" || { echo "$p is not $VERSION at $REF"; exit 1; }
+          done
+          test -f "docs/releases/v$VERSION.md" || { echo "missing docs/releases/v$VERSION.md"; exit 1; }
+          echo "REF=$REF" >> "$GITHUB_ENV"
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+        run: gh release create "v$VERSION" --target "$REF" --title "v$VERSION" --notes-file "docs/releases/v$VERSION.md"

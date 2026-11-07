@@ -60,12 +60,26 @@ marked as hedged.
 
 ## Install
 
+From a terminal:
+
 ```bash
 hermes plugins install https://github.com/vdimarco/hermes-plugin-hackathon/tree/main/plugins/vouch
 hermes plugins enable vouch
 ```
 
-Or, for local work, copy or link this folder to `~/.hermes/plugins/vouch/` and
+In Hermes Desktop, paste this link into your browser's address bar, or use
+**Capabilities → Plugins → Install from Git** with the folder URL above. Hermes
+shows what it found and asks before it installs anything.
+
+```text
+hermes://plugin/install?repo=https%3A%2F%2Fgithub.com%2Fvdimarco%2Fhermes-plugin-hackathon%2Ftree%2Fmain%2Fplugins%2Fvouch&enable=1
+```
+
+Once vouch is listed in the Hermes plugin catalog, the catalog card's **Open in
+Hermes Desktop** button does the same at the reviewed commit
+(`hermes://plugin/install?catalog=vouch`).
+
+For local work, copy or link this folder to `~/.hermes/plugins/vouch/` and
 run `hermes plugins enable vouch`.
 
 ## Use
