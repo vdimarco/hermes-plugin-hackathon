@@ -26,6 +26,27 @@ Agent:  [patch tests/test_cart.py]  ✗ Contract lock: tests/test_cart.py is cov
 ✅ Contract met: "Fix double discount" · 2/2 checks pass · receipt 9f2c41d0a7e3
 ```
 
+## Install
+
+From a terminal:
+
+```bash
+hermes plugins install https://github.com/vdimarco/hermes-plugin-hackathon/tree/main/plugins/contract
+hermes plugins enable contract
+```
+
+In Hermes Desktop, paste this link into your browser's address bar, or use
+**Capabilities → Plugins → Install from Git** with the folder URL above. Hermes
+shows what it found and asks before it installs anything.
+
+```text
+hermes://plugin/install?repo=https%3A%2F%2Fgithub.com%2Fvdimarco%2Fhermes-plugin-hackathon%2Ftree%2Fmain%2Fplugins%2Fcontract&enable=1
+```
+
+Once contract is listed in the Hermes plugin catalog, the catalog card's **Open in
+Hermes Desktop** button does the same at the reviewed commit
+(`hermes://plugin/install?catalog=contract`).
+
 ## Why a plugin, not a prompt
 
 A prompt can ask the agent not to touch the tests. Contract makes it unable to.

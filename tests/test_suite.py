@@ -88,6 +88,37 @@ class CatalogImages(unittest.TestCase):
             self.assertLess(local.stat().st_size, 1_000_000, f"{plugin.name}: keep the card under 1 MB")
 
 
+class InstallLinksAndRelease(unittest.TestCase):
+    def test_desktop_install_links_point_at_real_plugins(self):
+        import re
+        from urllib.parse import parse_qs, urlparse
+
+        links = set()
+        for readme in [ROOT / "README.md"] + list(PLUGINS.glob("*/README.md")):
+            links |= set(re.findall(r"hermes://plugin/install\?\S+", readme.read_text()))
+        repo_links = [l for l in links if "repo=" in l]
+        self.assertEqual(len(repo_links), 3, repo_links)
+        for link in repo_links:
+            params = parse_qs(urlparse(link).query)
+            self.assertEqual(params.get("enable"), ["1"], link)
+            url = params["repo"][0]
+            m = re.fullmatch(r"https://github\.com/vdimarco/hermes-plugin-hackathon/tree/main/(plugins/[a-z]+)", url)
+            self.assertTrue(m, url)
+            self.assertTrue((ROOT / m.group(1) / "plugin.yaml").is_file(), url)
+        catalog_links = sorted(l.rstrip("`).") for l in links if "catalog=" in l)
+        self.assertEqual(catalog_links, [f"hermes://plugin/install?catalog={n}" for n in ("contract", "multiverse", "vouch")])
+
+    def test_release_notes_for_current_version(self):
+        versions = {yaml.safe_load((p / "plugin.yaml").read_text())["version"] for p in PLUGINS.iterdir() if (p / "plugin.yaml").is_file()}
+        self.assertEqual(len(versions), 1, "all three plugins share one version")
+        version = versions.pop()
+        self.assertTrue((ROOT / "docs" / "releases" / f"v{version}.md").is_file())
+        self.assertIn(f"## {version}", (ROOT / "CHANGELOG.md").read_text())
+        workflow = yaml.safe_load((ROOT / ".github" / "workflows" / "release.yml").read_text())
+        self.assertIn("release", workflow["jobs"])
+        self.assertEqual(workflow["permissions"], {"contents": "write"})
+
+
 class PinnedCommit(unittest.TestCase):
     """The catalog sha must point at code with the same version (skipped when history is shallow)."""
 

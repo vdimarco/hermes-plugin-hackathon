@@ -35,6 +35,19 @@ hermes plugins install https://github.com/vdimarco/hermes-plugin-hackathon/tree/
 hermes plugins enable vouch contract multiverse
 ```
 
+In Hermes Desktop, paste one of these links into your browser's address bar, or
+use **Capabilities → Plugins → Install from Git** with a folder URL above. Hermes
+shows what it found and asks before it installs anything.
+
+```text
+hermes://plugin/install?repo=https%3A%2F%2Fgithub.com%2Fvdimarco%2Fhermes-plugin-hackathon%2Ftree%2Fmain%2Fplugins%2Fvouch&enable=1
+hermes://plugin/install?repo=https%3A%2F%2Fgithub.com%2Fvdimarco%2Fhermes-plugin-hackathon%2Ftree%2Fmain%2Fplugins%2Fcontract&enable=1
+hermes://plugin/install?repo=https%3A%2F%2Fgithub.com%2Fvdimarco%2Fhermes-plugin-hackathon%2Ftree%2Fmain%2Fplugins%2Fmultiverse&enable=1
+```
+
+Once the plugins are listed in the Hermes catalog, each catalog card has an
+**Open in Hermes Desktop** button that installs the reviewed commit.
+
 For local work, link a folder into `~/.hermes/plugins/<name>/` instead.
 
 ## Repository layout
