@@ -1,7 +1,7 @@
 ## What does this PR do?
 
 Adds **Vouch** to the plugin catalog (`plugin-catalog/vouch.yaml`), pinned to
-`vdimarco/hermes-plugin-hackathon@a3e6c9aa8d2033382400fb94db26892c45fdc643`, subdir `plugins/vouch`.
+`vdimarco/hermes-plugin-hackathon@bfbc35cc3fe18188a600e131a09989af7d0147f7`, subdir `plugins/vouch`.
 
 Vouch checks the agent's "done" against the tool record. It finds claims of
 finished work in the final reply ("all tests pass", "I updated `src/app.py`",
@@ -21,7 +21,9 @@ each one to the commands, exit codes and file writes of the session.
 
 **Hermes surfaces used:** hooks `post_tool_call`, `pre_verify`,
 `transform_llm_output`, `on_session_delete`; tools `vouch_evidence`,
-`vouch_check`; slash command `/vouch`; CLI command `hermes vouch`.
+`vouch_check`; slash command `/vouch`; CLI command `hermes vouch`; `ctx.has_plugin` and
+`ctx.dispatch_tool("contract_status")` to carry the Contract plugin's status line in the same
+footer when Contract is enabled (Hermes keeps only the first reply rewrite).
 
 **Disclosure (rule 13):**
 * **Desktop events:** sends a plugin.vouch.report event (counts and up to 6 flagged claims with reasons) to Desktop windows attached to the same Hermes process; the desktop half keeps the last 20 in Desktop plugin storage.

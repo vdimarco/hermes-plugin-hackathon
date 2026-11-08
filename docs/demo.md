@@ -6,7 +6,7 @@ entries, cut one 60 to 90 second video per plugin from the same recording.
 ## Set up (before you record)
 
 ```bash
-hermes plugins enable vouch contract multiverse
+for p in vouch contract multiverse; do hermes plugins enable $p; done   # enable takes one name
 cp -r demo/cart /tmp/cart && cd /tmp/cart
 printf '__pycache__/\n.pytest_cache/\n' > .gitignore
 git init -q && git add -A && git commit -qm init

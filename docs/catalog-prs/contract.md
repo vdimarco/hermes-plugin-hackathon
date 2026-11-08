@@ -1,7 +1,7 @@
 ## What does this PR do?
 
 Adds **Contract** to the plugin catalog (`plugin-catalog/contract.yaml`), pinned to
-`vdimarco/hermes-plugin-hackathon@a3e6c9aa8d2033382400fb94db26892c45fdc643`, subdir `plugins/contract`.
+`vdimarco/hermes-plugin-hackathon@bfbc35cc3fe18188a600e131a09989af7d0147f7`, subdir `plugins/contract`.
 
 Contract is a definition of done the agent cannot fake. Before a coding task, the
 agent proposes shell checks and locked paths (usually the tests); the user
@@ -23,7 +23,8 @@ approves them with `/contract approve`. From then on:
 `pre_llm_call`, `pre_verify`, `transform_llm_output`, `on_session_delete`,
 `subagent_start`; tools `contract_propose`, `contract_status`, `contract_run`;
 slash command `/contract`; CLI command `hermes contract`;
-`ctx.dispatch_tool("terminal", ...)` for check runs.
+`ctx.dispatch_tool("terminal", ...)` for check runs; `ctx.has_plugin("vouch")` to yield its footer
+line to Vouch's footer when Vouch is enabled.
 
 **Disclosure (rule 13):**
 * **Desktop events:** sends plugin.contract.state snapshots (title, checks with commands and reasons, locks, receipt hash) and plugin.contract.blocked events to Desktop windows attached to the same Hermes process; the desktop half keeps the last 20 snapshots in Desktop plugin storage.

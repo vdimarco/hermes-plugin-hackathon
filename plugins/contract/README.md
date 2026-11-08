@@ -58,7 +58,7 @@ A prompt can ask the agent not to touch the tests. Contract makes it unable to.
 | `post_tool_call` | Records every run of a check command with its exit code, also when the agent runs it with the terminal tool directly. A pipe that hides a failure (`pytest \| tail`) still counts as a failure. |
 | `pre_verify` | A turn that edited code cannot finish while a check fails, has not run, or passed before the last edit. Bounded by `max_nudges` (default 2) and `agent.max_verify_nudges`. |
 | `pre_llm_call` | While a contract is open, adds a one-line reminder of the definition of done. |
-| `transform_llm_output` | One status line under replies: proposed, 2/3 pass, or met with the receipt id. |
+| `transform_llm_output` | One status line under replies: proposed, 2/3 pass, or met with the receipt id. Hermes keeps only one reply rewrite, so when Vouch is also enabled, this line appears inside Vouch's footer instead. |
 
 ## The receipt
 

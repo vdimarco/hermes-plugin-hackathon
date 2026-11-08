@@ -2,6 +2,13 @@
 
 All three plugins (Vouch, Contract, Multiverse) share one version.
 
+## 1.1.1
+
+- Vouch and Contract share one reply footer: Hermes keeps only the first rewrite, so Vouch now carries Contract's status line, and Contract yields while Vouch is enabled.
+- Docs: `hermes plugins enable` takes one name.
+- `scripts/smoke-hermes.py`: a smoke test inside a real Hermes install (23 checks).
+- `contract_status` reports the summary and the receipt hash.
+
 ## 1.1.0
 
 - Hermes Desktop halves (`desktop/plugin.js`) for all three plugins: a Vouch status-bar chip, a Contract checklist pane, and a Multiverse live race board. The Python side pushes state with `broadcast_plugin_event`.

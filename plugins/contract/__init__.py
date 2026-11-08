@@ -33,7 +33,7 @@ from .ledger import Ledger
 
 logger = logging.getLogger(__name__)
 
-VERSION = "1.1.0"
+VERSION = "1.1.1"
 TOOLSET = "contract"
 OWN_TOOLS = {"contract_propose", "contract_status", "contract_run"}
 MAX_CONTRACTS = 32
@@ -307,31 +307,51 @@ class ContractPlugin:
             logger.debug("contract: pre_verify failed", exc_info=True)
             return None
 
+    def footer_line(self, key: str) -> str:
+        """The one-line contract status for the reply footer ("" when there is nothing to say).
+        Moves an all-passing contract to met, and announces "met" only once."""
+        contract = self._refresh(key)
+        if not contract:
+            return ""
+        last_write = self.last_write_seq(key)
+        if contract["status"] == model.ACTIVE and model.all_pass(contract, last_write):
+            self._finish(key, contract)
+        if contract["status"] == model.PROPOSED:
+            return (f"📝 Contract proposed: “{contract['title']}” ({len(contract['checks'])} checks). "
+                    "Run `/contract` to read it and `/contract approve` to lock it.")
+        if contract["status"] == model.ACTIVE:
+            return f"📜 Contract “{contract['title']}”: {model.summary_line(contract, last_write)}. The task is not done yet."
+        if contract["status"] == model.MET and not contract.get("announced"):
+            receipt = contract.get("receipt") or {}
+            contract["announced"] = True
+            self._put(key, contract)
+            return (f"✅ Contract met: “{contract['title']}” · {model.summary_line(contract, last_write)} · "
+                    f"receipt `{receipt.get('receipt_hash', '')[:12]}` · `/contract receipt` for the PR block")
+        return ""
+
+    def _vouch_renders_footer(self) -> bool:
+        """Hermes keeps only the first reply rewrite, so when Vouch is enabled it renders one footer
+        for both plugins and fetches this plugin's line through contract_status (footer_request)."""
+        try:
+            return bool(self.ctx.has_plugin("vouch"))
+        except Exception:
+            return False
+
     def on_transform_llm_output(self, response_text: str = "", session_id: str = "", **kwargs: Any) -> Optional[str]:
-        if not _truthy(self._cfg("footer", True)) or not isinstance(response_text, str) or not response_text.strip():
+        if not isinstance(response_text, str) or not response_text.strip():
             return None
         try:
             key = self.key(session_id)
             if kwargs.get("model"):
                 self._models[key] = str(kwargs["model"])
-            contract = self._refresh(key)
-            if not contract:
+            if self._vouch_renders_footer():
+                contract = self._refresh(key)  # still move an all-passing contract to met
+                if contract and contract["status"] == model.ACTIVE and model.all_pass(contract, self.last_write_seq(key)):
+                    self._finish(key, contract)
                 return None
-            last_write = self.last_write_seq(key)
-            if contract["status"] == model.ACTIVE and model.all_pass(contract, last_write):
-                self._finish(key, contract)
-            line = ""
-            if contract["status"] == model.PROPOSED:
-                line = (f"📝 Contract proposed: “{contract['title']}” ({len(contract['checks'])} checks). "
-                        "Run `/contract` to read it and `/contract approve` to lock it.")
-            elif contract["status"] == model.ACTIVE:
-                line = f"📜 Contract “{contract['title']}”: {model.summary_line(contract, last_write)}. The task is not done yet."
-            elif contract["status"] == model.MET and not contract.get("announced"):
-                receipt = contract.get("receipt") or {}
-                line = (f"✅ Contract met: “{contract['title']}” · {model.summary_line(contract, last_write)} · "
-                        f"receipt `{receipt.get('receipt_hash', '')[:12]}` · `/contract receipt` for the PR block")
-                contract["announced"] = True
-                self._put(key, contract)
+            if not _truthy(self._cfg("footer", True)):
+                return None
+            line = self.footer_line(key)
             return response_text.rstrip() + "\n\n---\n" + line if line else None
         except Exception:
             logger.debug("contract: transform failed", exc_info=True)
@@ -369,8 +389,14 @@ class ContractPlugin:
             return json.dumps({"error": f"contract_propose failed: {exc}"})
 
     def tool_status(self, args: Dict[str, Any], session_id: Optional[str] = None,
-                    task_id: Optional[str] = None, **kwargs: Any) -> str:
+                    task_id: Optional[str] = None, footer_request: bool = False, **kwargs: Any) -> str:
         try:
+            if footer_request:
+                # Another plugin (Vouch) asks for this session's footer line. Only plugin code can pass
+                # this keyword; the model calls the tool with an args dict.
+                if not _truthy(self._cfg("footer", True)):
+                    return json.dumps({"footer_line": ""})
+                return json.dumps({"footer_line": self.footer_line(self.key(session_id, task_id))})
             key = self.resolve(session_id, task_id)
             contract = self._refresh(key)
             if not contract:
@@ -378,8 +404,11 @@ class ContractPlugin:
             last_write = self.last_write_seq(key)
             states = [{"id": c["id"], "command": c["command"], "state": s, "reason": (r or {}).get("reason")}
                       for c, s, r in model.check_states(contract, last_write)]
+            receipt = contract.get("receipt") or {}
             return json.dumps({"status": contract["status"], "title": contract["title"], "checks": states,
-                               "locked": contract["locked"], "text": model.format_status(contract, last_write)})
+                               "summary": model.summary_line(contract, last_write), "locked": contract["locked"],
+                               "receipt_hash": receipt.get("receipt_hash", ""), "receipt_stale": bool(receipt.get("stale")),
+                               "text": model.format_status(contract, last_write)})
         except Exception as exc:
             return json.dumps({"error": f"contract_status failed: {exc}"})
 

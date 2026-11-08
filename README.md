@@ -32,7 +32,7 @@ terminal backend apply.
 hermes plugins install https://github.com/vdimarco/hermes-plugin-hackathon/tree/main/plugins/vouch
 hermes plugins install https://github.com/vdimarco/hermes-plugin-hackathon/tree/main/plugins/contract
 hermes plugins install https://github.com/vdimarco/hermes-plugin-hackathon/tree/main/plugins/multiverse
-hermes plugins enable vouch contract multiverse
+for p in vouch contract multiverse; do hermes plugins enable $p; done   # enable takes one name
 ```
 
 In Hermes Desktop, paste one of these links into your browser's address bar, or
