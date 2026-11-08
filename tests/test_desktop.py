@@ -8,7 +8,7 @@ import unittest
 
 from tests._load import PLUGINS, ROOT, FakeCtx, load, submodule
 
-PLUGIN_NAMES = ("vouch", "contract", "multiverse")
+PLUGIN_NAMES = ("contract", "multiverse")
 
 # Copied from Hermes' admission lint (hermes_cli/plugin_validate_desktop.py, _FORBIDDEN), which the
 # catalog CI runs as the "desktop surface" check. Kept here so a violation fails before submission.
@@ -84,14 +84,14 @@ class EventTests(unittest.TestCase):
         p.command("reset", session_id="s")
         self.assertEqual(rec.events[-1][1]["status"], "none")
 
-    def test_vouch_publishes_reports(self):
-        rec, restore = patch_emit("vouch")
+    def test_claim_check_publishes_reports(self):
+        rec, restore = patch_emit("contract")
         self.addCleanup(restore)
-        pkg = load("vouch")
-        p = pkg.Vouch(FakeCtx(), ledger=submodule("vouch", "ledger").Ledger())
+        pkg = load("contract")
+        p = pkg.ContractPlugin(FakeCtx(), ledger=submodule("contract", "ledger").Ledger())
         p.on_post_tool_call(tool_name="patch", args={"path": "a.py"}, result="{}", status="ok", session_id="s")
         p.on_pre_verify(session_id="s", attempt=0, final_response="All tests pass.")
-        self.assertEqual(rec.events[-1][1]["stage"], "draft")
+        self.assertEqual(rec.events[-1][:1] + (rec.events[-1][1]["stage"],), ("report", "draft"))
         p.on_transform_llm_output(response_text="All tests pass.", session_id="s")
         event, payload = rec.events[-1]
         self.assertEqual((event, payload["stage"], payload["counts"]["unverified"]), ("report", "final", 1))

@@ -1,38 +1,40 @@
 # Proof of Work for Hermes Agent
 
-Three Hermes Agent plugins that make an agent's "done" something you can check.
+Two Hermes Agent plugins that make an agent's "done" something you can check.
 
 | Plugin | One line | Main hooks |
 |---|---|---|
-| [**Vouch**](plugins/vouch) | Every claim in the final reply ("all tests pass", "pushed to main") is checked against the tool record. False claims send the agent back. | `post_tool_call`, `pre_verify`, `transform_llm_output` |
-| [**Contract**](plugins/contract) | You approve the definition of done before work starts. The agent cannot edit the tests, cannot finish while a check fails, and ships a receipt that a reviewer can check. | `pre_tool_call`, `pre_verify`, `pre_llm_call`, `post_tool_call` |
+| [**Contract**](plugins/contract) | You approve the definition of done before work starts. The agent cannot edit the tests, cannot finish while a check fails, and ships a receipt that a reviewer can check. Its claim check, Vouch, checks every claim in the final reply ("all tests pass", "pushed to main") against the tool record, and a false claim sends the agent back. | `pre_tool_call`, `pre_verify`, `pre_llm_call`, `post_tool_call`, `transform_llm_output` |
 | [**Multiverse**](plugins/multiverse) | Race 2 to 6 attempts (approaches or models) in separate git worktrees, judge them with the same checks, adopt the winner. | `subagent_start`, `pre_tool_call` (path pinning), delegation provider |
 
-Each plugin also ships a Hermes Desktop half (`desktop/plugin.js`): a status-bar
-chip for Vouch, a live checklist pane for Contract, and a live race board for
+Each plugin also ships a Hermes Desktop half (`desktop/plugin.js`): a live
+checklist pane and claim-verdict chip for Contract, and a live race board for
 Multiverse. The Python side pushes state with `broadcast_plugin_event`; the
 desktop side only listens.
 
 Each plugin works alone. Together they cover a task from start to finish:
 
 ```
-Contract  ─ what "done" means, approved by you, locked
+Contract   ─ what "done" means, approved by you, locked
 Multiverse ─ several attempts, judged by those checks, the winner adopted
-Vouch     ─ the final report matches what really ran
-Contract  ─ receipt for the PR
+Vouch      ─ (inside Contract) the final report matches what really ran
+Contract   ─ receipt for the PR
 ```
 
-None of them make network calls or hold credentials. Contract and Multiverse
+Until 1.1.1, Vouch was a separate plugin. Since 1.2.0 it ships inside Contract:
+one install, one tool record, one reply footer.
+
+Neither plugin makes network calls or holds credentials. Contract and Multiverse
 run shell commands only through the Hermes terminal tool, so your approvals and
 terminal backend apply.
 
 ## Install
 
 ```bash
-hermes plugins install https://github.com/vdimarco/hermes-plugin-hackathon/tree/main/plugins/vouch
 hermes plugins install https://github.com/vdimarco/hermes-plugin-hackathon/tree/main/plugins/contract
 hermes plugins install https://github.com/vdimarco/hermes-plugin-hackathon/tree/main/plugins/multiverse
-for p in vouch contract multiverse; do hermes plugins enable $p; done   # enable takes one name
+hermes plugins enable contract
+hermes plugins enable multiverse     # enable takes one name
 ```
 
 In Hermes Desktop, paste one of these links into your browser's address bar, or
@@ -40,7 +42,6 @@ use **Capabilities → Plugins → Install from Git** with a folder URL above. H
 shows what it found and asks before it installs anything.
 
 ```text
-hermes://plugin/install?repo=https%3A%2F%2Fgithub.com%2Fvdimarco%2Fhermes-plugin-hackathon%2Ftree%2Fmain%2Fplugins%2Fvouch&enable=1
 hermes://plugin/install?repo=https%3A%2F%2Fgithub.com%2Fvdimarco%2Fhermes-plugin-hackathon%2Ftree%2Fmain%2Fplugins%2Fcontract&enable=1
 hermes://plugin/install?repo=https%3A%2F%2Fgithub.com%2Fvdimarco%2Fhermes-plugin-hackathon%2Ftree%2Fmain%2Fplugins%2Fmultiverse&enable=1
 ```

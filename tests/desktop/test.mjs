@@ -5,7 +5,6 @@ import { host, notifications } from '@hermes/plugin-sdk'
 
 const contract = await import('../../plugins/contract/desktop/plugin.js')
 const multiverse = await import('../../plugins/multiverse/desktop/plugin.js')
-const vouch = await import('../../plugins/vouch/desktop/plugin.js')
 
 // -- a tiny renderer: expands function components into plain element objects ---------------
 function render(node) {
@@ -68,12 +67,12 @@ const CONTRACT_STATE = {
   locked: ['tests/*', 'conftest.py'], approved_by: 'user', receipt: null, ts: 1
 }
 
-test('contract: registers a pane, a chip and a palette command', () => {
+test('contract: registers a pane, two chips and a palette command', () => {
   const ctx = makeCtx()
   contract.default.register(ctx)
   assert.equal(contract.default.id, 'contract')
-  assert.deepEqual(ctx.contributions.map(c => c.area).sort(), ['palette', 'panes', 'statusBar.right'])
-  assert.deepEqual(Object.keys(ctx.listeners).sort(), ['plugin.contract.blocked', 'plugin.contract.state'])
+  assert.deepEqual(ctx.contributions.map(c => c.area).sort(), ['palette', 'panes', 'statusBar.right', 'statusBar.right'])
+  assert.deepEqual(Object.keys(ctx.listeners).sort(), ['plugin.contract.blocked', 'plugin.contract.report', 'plugin.contract.state'])
 })
 
 test('contract: empty state, then the checklist from a state event', () => {
@@ -81,7 +80,7 @@ test('contract: empty state, then the checklist from a state event', () => {
   contract.default.register(ctx)
   const pane = () => render(ctx.area('panes')[0].render())
   assert.match(text(pane()), /No contract in this chat/)
-  assert.equal(render(ctx.area('statusBar.right')[0].render()), null)
+  assert.equal(render(ctx.contributions.find(c => c.id === 'chip').render()), null)
   ctx.emit('plugin.contract.state', CONTRACT_STATE)
   const t = text(pane())
   assert.match(t, /Fix double discount/)
@@ -89,7 +88,7 @@ test('contract: empty state, then the checklist from a state event', () => {
   assert.match(t, /pytest -q/)
   assert.match(t, /tests\/\*/)
   assert.deepEqual(findAll(pane(), 'StatusDot').map(d => d.props.tone), ['good', 'bad'])
-  const chip = render(ctx.area('statusBar.right')[0].render())
+  const chip = render(ctx.contributions.find(c => c.id === 'chip').render())
   assert.match(text(chip), /contract 1\/2/)
   assert.equal(findAll(chip, 'StatusDot')[0].props.tone, 'bad')
 })
@@ -196,17 +195,16 @@ test('multiverse: runs of the focused chat come first', () => {
   for (const bad of [null, {}, { id: 'x' }]) ctx.emit('plugin.multiverse.run', bad)
 })
 
-test('vouch: chip shows counts, a draft nudge toasts, a click lists the problems', () => {
+test('vouch chip: shows counts, a draft nudge toasts, a click lists the problems', () => {
   const ctx = makeCtx()
-  vouch.default.register(ctx)
-  assert.equal(vouch.default.id, 'vouch')
-  const chip = () => render(ctx.area('statusBar.right')[0].render())
+  contract.default.register(ctx)
+  const chip = () => render(ctx.contributions.find(c => c.id === 'vouch-chip').render())
   assert.equal(chip(), null)
   const before = notifications.length
   const report = { session: 's1', stage: 'draft', ts: 1, counts: { verified: 1, unverified: 1, stale: 0, contradicted: 1 },
     problems: [{ kind: 'tests', status: 'contradicted', label: 'tests pass', reason: 'the last test run exited 1', claim: 'All tests pass.' },
                { kind: 'push', status: 'unverified', label: 'changes pushed', reason: 'no git push command ran', claim: 'Pushed.' }] }
-  ctx.emit('plugin.vouch.report', report)
+  ctx.emit('plugin.contract.report', report)
   assert.equal(notifications[before].kind, 'info')
   assert.match(notifications[before].detail, /✗ tests pass: the last test run exited 1/)
   const tree = chip()
@@ -214,7 +212,7 @@ test('vouch: chip shows counts, a draft nudge toasts, a click lists the problems
   assert.equal(findAll(tree, 'StatusDot')[0].props.tone, 'bad')
   tree.props.onClick()
   assert.match(notifications.at(-1).message, /2 claims not backed/)
-  ctx.emit('plugin.vouch.report', { ...report, stage: 'final', ts: 2, counts: { verified: 3 }, problems: [] })
+  ctx.emit('plugin.contract.report', { ...report, stage: 'final', ts: 2, counts: { verified: 3 }, problems: [] })
   assert.match(text(chip()), /vouch ✓3\s*$/)
   assert.equal(findAll(chip(), 'StatusDot')[0].props.tone, 'good')
 })

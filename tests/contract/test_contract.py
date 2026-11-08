@@ -353,9 +353,6 @@ class ManifestTests(unittest.TestCase):
         self.assertEqual(sorted(entry["capabilities"]["provides_tools"]), sorted(manifest["provides_tools"]))
         self.assertEqual(sorted(entry["capabilities"]["provides_hooks"]), sorted(manifest["provides_hooks"]))
 
-    def test_ledger_copy_matches_vouch(self):
-        self.assertEqual((PLUGIN / "ledger.py").read_text(), (PLUGINS / "vouch" / "ledger.py").read_text())
-
 
 if __name__ == "__main__":
     unittest.main()

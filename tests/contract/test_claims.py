@@ -9,11 +9,12 @@ import yaml
 
 from tests._load import PLUGINS, ROOT, FakeCtx, load, submodule
 
-vouch = load("vouch")
-checker = submodule("vouch", "checker")
-extract_claims = submodule("vouch", "claims").extract_claims
-Ledger = submodule("vouch", "ledger").Ledger
-PLUGIN = PLUGINS / "vouch"
+contract = load("contract")
+vouch = submodule("contract", "vouch")
+checker = submodule("contract", "checker")
+extract_claims = submodule("contract", "claims").extract_claims
+Ledger = submodule("contract", "ledger").Ledger
+PLUGIN = PLUGINS / "contract"
 
 SID = "session-1"
 
@@ -218,9 +219,9 @@ class HookTests(unittest.TestCase):
     def test_pre_verify_is_bounded_and_respects_mode(self):
         h = Harness().run(patch("app.py"))
         self.assertIsNone(h.plugin.on_pre_verify(session_id=SID, attempt=1, final_response="All tests pass."))
-        h2 = Harness({"mode": "annotate"}).run(patch("app.py"))
+        h2 = Harness({"claims_mode": "annotate"}).run(patch("app.py"))
         self.assertIsNone(h2.plugin.on_pre_verify(session_id=SID, attempt=0, final_response="All tests pass."))
-        h3 = Harness({"max_nudges": 3}).run(patch("app.py"))
+        h3 = Harness({"claims_max_nudges": 3}).run(patch("app.py"))
         self.assertIsNotNone(h3.plugin.on_pre_verify(session_id=SID, attempt=2, final_response="All tests pass."))
 
     def test_pre_verify_quiet_when_claims_hold(self):
@@ -242,16 +243,16 @@ class HookTests(unittest.TestCase):
     def test_transform_respects_footer_and_off(self):
         h = Harness({"footer": False}).run(patch("a.py"))
         self.assertIsNone(h.plugin.on_transform_llm_output(response_text="All tests pass.", session_id=SID))
-        h2 = Harness({"mode": "off"}).run(patch("a.py"))
+        h2 = Harness({"claims_mode": "off"}).run(patch("a.py"))
         self.assertIsNone(h2.plugin.on_transform_llm_output(response_text="All tests pass.", session_id=SID))
 
     def test_footer_verified_lists_passing_claims(self):
-        h = Harness({"footer_verified": True}).run(term("pytest", 0, "3 passed"))
+        h = Harness({"claims_footer_verified": True}).run(term("pytest", 0, "3 passed"))
         out = h.plugin.on_transform_llm_output(response_text="All tests pass.", session_id=SID)
         self.assertIn("✅", out)
 
     def test_kinds_filter(self):
-        h = Harness({"kinds": ["push"]}).run(patch("a.py"))
+        h = Harness({"claims_kinds": ["push"]}).run(patch("a.py"))
         self.assertIsNone(h.plugin.on_transform_llm_output(response_text="All tests pass.", session_id=SID))
 
     def test_sessions_are_separate(self):
@@ -320,27 +321,17 @@ class ToolAndCommandTests(unittest.TestCase):
         self.assertEqual(h.ctx.state.get("stats"), {})
 
 
-class ManifestTests(unittest.TestCase):
-    def test_register_matches_manifest(self):
-        manifest = yaml.safe_load((PLUGIN / "plugin.yaml").read_text())
+class RegistrationTests(unittest.TestCase):
+    def test_contract_registers_the_claim_check(self):
         ctx = FakeCtx()
-        vouch.register(ctx)
-        self.assertEqual(sorted(ctx.tools), sorted(manifest["provides_tools"]))
-        self.assertEqual(sorted(ctx.hooks), sorted(manifest["provides_hooks"]))
+        contract.register(ctx)
+        for name in ("vouch_evidence", "vouch_check"):
+            self.assertIn(name, ctx.tools)
         self.assertIn("vouch", ctx.commands)
         self.assertIn("vouch", ctx.cli)
-        for field in ("name", "version", "description"):
-            self.assertTrue(manifest[field])
-
-    def test_catalog_entry_matches_manifest(self):
-        entry = yaml.safe_load((ROOT / "catalog" / "vouch.yaml").read_text())
         manifest = yaml.safe_load((PLUGIN / "plugin.yaml").read_text())
-        self.assertEqual(entry["name"], manifest["name"])
-        self.assertEqual(entry["subdir"], "plugins/vouch")
-        self.assertEqual(entry["version"], manifest["version"])
-        self.assertEqual(entry["requires_hermes"], manifest["requires_hermes"])
-        self.assertEqual(sorted(entry["capabilities"]["provides_tools"]), sorted(manifest["provides_tools"]))
-        self.assertEqual(sorted(entry["capabilities"]["provides_hooks"]), sorted(manifest["provides_hooks"]))
+        for key in ("claims_mode", "claims_max_nudges", "claims_footer_verified", "claims_kinds", "footer"):
+            self.assertIn(key, manifest["config_schema"])
 
     def test_no_forbidden_calls(self):
         """Catalog rules 9, 11 and 13: no core overrides, no secret files, no network or shell."""

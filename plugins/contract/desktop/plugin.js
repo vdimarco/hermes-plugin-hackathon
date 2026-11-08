@@ -1,14 +1,19 @@
 // Contract: desktop half.
 //
 // Shows the definition-of-done checklist of the focused chat in a side pane and a
-// status-bar chip, and toasts when the lock blocks an edit. The Python half pushes
-// `plugin.contract.state` and `plugin.contract.blocked` events (hermes_cli.plugin_events);
-// this file only listens. The last snapshot per chat is kept in ctx.storage so the
-// pane is not empty after a reload. Plain ESM: no JSX, no build step.
+// status-bar chip, and toasts when the lock blocks an edit. A second chip shows the
+// verdicts of Vouch, the claim check, on the focused chat's latest reply:
+// ✓ verified, ⚠ unverified or stale, ✗ contradicted; a click lists the claims that
+// need attention, and a toast says when Vouch sent the agent back.
+// The Python half pushes `plugin.contract.state`, `plugin.contract.blocked` and
+// `plugin.contract.report` events (hermes_cli.plugin_events); this file only listens.
+// The last snapshot and report per chat are kept in ctx.storage so the pane is not
+// empty after a reload. Plain ESM: no JSX, no build step.
 import {
   host,
   useValue,
   atom,
+  haptic,
   PANES_AREA,
   STATUSBAR_AREAS,
   PALETTE_AREA,
@@ -28,6 +33,8 @@ const STATUS_LABEL = { proposed: 'proposed: run /contract approve', active: 'loc
 
 const $snapshots = atom({})
 const $lastSession = atom('')
+const $reports = atom({})
+const $lastReportSession = atom('')
 
 export function rememberSnapshot(storage, snap) {
   if (!snap || typeof snap !== 'object' || typeof snap.session !== 'string' || !snap.session) {
@@ -159,6 +166,73 @@ export function ContractChip() {
   })
 }
 
+// -- Vouch: claim verdicts ----------------------------------------------------------------
+
+export function rememberReport(storage, report) {
+  if (!report || typeof report !== 'object' || typeof report.session !== 'string' || !report.session || !report.counts) {
+    return false
+  }
+  const next = { ...$reports.get(), [report.session]: report }
+  const keys = Object.keys(next).sort((a, b) => (next[a].ts || 0) - (next[b].ts || 0))
+  while (keys.length > MAX_SESSIONS) {
+    delete next[keys.shift()]
+  }
+  $reports.set(next)
+  $lastReportSession.set(report.session)
+  storage.set('reports', next)
+  storage.set('lastReportSession', report.session)
+  return true
+}
+
+export function pickReport(all, focusedStored, focusedRuntime, last) {
+  return (focusedStored && all[focusedStored]) || (focusedRuntime && all[focusedRuntime]) || all[last] || null
+}
+
+export function summarize(report) {
+  const c = report.counts || {}
+  const verified = c.verified || 0
+  const soft = (c.unverified || 0) + (c.stale || 0)
+  const bad = c.contradicted || 0
+  const tone = bad ? 'bad' : soft ? 'warn' : 'good'
+  return { verified, soft, bad, tone, text: `vouch ✓${verified}${soft ? ` ⚠${soft}` : ''}${bad ? ` ✗${bad}` : ''}` }
+}
+
+export function problemLines(report) {
+  return (report.problems || []).map(p => `${p.status === 'contradicted' ? '✗' : '⚠'} ${p.label}: ${p.reason}`)
+}
+
+function showDetails(report) {
+  const lines = problemLines(report)
+  host.notify({
+    kind: lines.length ? 'warning' : 'success',
+    title: 'Vouch',
+    message: lines.length ? `${lines.length} claim${lines.length === 1 ? '' : 's'} not backed by the tool record` : 'Every claim in the last reply is backed by the tool record.',
+    detail: lines.length ? lines.join('\n') : undefined
+  })
+}
+
+export function VouchChip() {
+  const all = useValue($reports)
+  const last = useValue($lastReportSession)
+  const focusedStored = useValue(host.state.focusedStoredSessionId)
+  const focusedRuntime = useValue(host.state.focusedSessionId)
+  const report = pickReport(all, focusedStored, focusedRuntime, last)
+  if (!report) {
+    return null
+  }
+  const s = summarize(report)
+  return jsxs('button', {
+    type: 'button',
+    className: 'flex items-center gap-1 px-1.5 text-[0.6875rem] text-(--ui-text-tertiary) hover:text-(--ui-text-secondary)',
+    title: 'Vouch: claims in the last reply checked against the tool record',
+    onClick: () => {
+      haptic('tap')
+      showDetails(report)
+    },
+    children: [jsx(StatusDot, { tone: s.tone }), s.text]
+  })
+}
+
 export default {
   id: ID,
   name: 'Contract',
@@ -166,6 +240,9 @@ export default {
     const saved = ctx.storage.get('snapshots', {})
     $snapshots.set(saved && typeof saved === 'object' ? saved : {})
     $lastSession.set(ctx.storage.get('lastSession', ''))
+    const savedReports = ctx.storage.get('reports', {})
+    $reports.set(savedReports && typeof savedReports === 'object' ? savedReports : {})
+    $lastReportSession.set(ctx.storage.get('lastReportSession', ''))
 
     ctx.onEvent(`plugin.${ID}.state`, event => {
       rememberSnapshot(ctx.storage, event && event.payload)
@@ -178,6 +255,21 @@ export default {
         message: `Blocked a ${p.tool || 'tool'} edit to ${p.path || 'a locked file'}`,
         detail: p.lock ? `Locked by “${p.lock}” in “${p.title || 'the contract'}”.` : undefined
       })
+    })
+
+    ctx.onEvent(`plugin.${ID}.report`, event => {
+      const report = event && event.payload
+      if (!rememberReport(ctx.storage, report)) {
+        return
+      }
+      if (report.stage === 'draft') {
+        host.notify({
+          kind: 'info',
+          title: 'Vouch',
+          message: 'Sent the agent back: its draft reply claimed something the tool record does not show.',
+          detail: problemLines(report).join('\n') || undefined
+        })
+      }
     })
 
     ctx.registerMany([
@@ -193,6 +285,12 @@ export default {
         area: STATUSBAR_AREAS.right,
         order: 140,
         render: () => jsx(ContractChip, {})
+      },
+      {
+        id: 'vouch-chip',
+        area: STATUSBAR_AREAS.right,
+        order: 139,
+        render: () => jsx(VouchChip, {})
       },
       {
         id: 'copy-receipt',
