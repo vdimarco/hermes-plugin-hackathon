@@ -156,22 +156,39 @@ class Vouch:
 
     def on_transform_llm_output(self, response_text: str = "", session_id: str = "",
                                 **kwargs: Any) -> Optional[str]:
-        if self.mode() == "off" or not isinstance(response_text, str) or not response_text.strip():
+        if not isinstance(response_text, str) or not response_text.strip():
             return None
+        footer = ""
         try:
             key = self._session_key(session_id)
-            report = checker.check_reply(response_text, self.ledger.events(key), self.kinds())
-            self._remember(key, report)
-            self._record_stats(key, report)
-            if report.findings:
-                desktop_events.emit("report", _desktop_report(key, report, stage="final"))
-            if not self.footer_enabled():
-                return None
-            footer = checker.format_footer(report, show_verified=self.footer_verified())
-            return response_text.rstrip() + "\n" + footer if footer else None
+            if self.mode() != "off":
+                report = checker.check_reply(response_text, self.ledger.events(key), self.kinds())
+                self._remember(key, report)
+                self._record_stats(key, report)
+                if report.findings:
+                    desktop_events.emit("report", _desktop_report(key, report, stage="final"))
+                if self.footer_enabled():
+                    footer = checker.format_footer(report, show_verified=self.footer_verified())
         except Exception:
             logger.debug("vouch: transform failed", exc_info=True)
-            return None
+        # Hermes keeps only the first reply rewrite, so Vouch also carries Contract's status line
+        # (Contract yields its own footer while Vouch is enabled).
+        contract_line = self._contract_footer_line(session_id)
+        if contract_line:
+            footer = (footer + "\n\n" + contract_line) if footer else ("\n---\n" + contract_line)
+        return response_text.rstrip() + "\n" + footer if footer else None
+
+    def _contract_footer_line(self, session_id: str) -> str:
+        try:
+            if not self.ctx.has_plugin("contract"):
+                return ""
+            raw = self.ctx.dispatch_tool("contract_status", {}, session_id=session_id, footer_request=True)
+            data = json.loads(raw) if isinstance(raw, str) else (raw or {})
+            line = data.get("footer_line") if isinstance(data, dict) else ""
+            return line if isinstance(line, str) else ""
+        except Exception:
+            logger.debug("vouch: contract footer line unavailable", exc_info=True)
+            return ""
 
     def on_session_delete(self, session_id: str = "", **kwargs: Any) -> None:
         key = self._session_key(session_id)

@@ -49,8 +49,9 @@ class FakeState:
 class FakeCtx:
     """Records what register() asks for. Mirrors the PluginContext methods the plugins use."""
 
-    def __init__(self, config=None, dispatch=None):
+    def __init__(self, config=None, dispatch=None, plugins=()):
         self.config = dict(config or {})
+        self.plugins = set(plugins)
         self.state = FakeState()
         self.tools, self.hooks, self.commands, self.cli, self.providers = {}, {}, {}, {}, []
         self._dispatch = dispatch
@@ -71,6 +72,9 @@ class FakeCtx:
 
     def register_cli_command(self, name, help, setup_fn, handler_fn=None, **kwargs):
         self.cli[name] = (setup_fn, handler_fn)
+
+    def has_plugin(self, plugin_id):
+        return plugin_id in self.plugins
 
     def register_delegation_provider(self, provider):
         self.providers.append(provider)

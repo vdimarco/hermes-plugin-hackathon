@@ -109,6 +109,13 @@ status-bar chip with the verdicts on the focused chat's latest reply, for exampl
 back to fix a claim, a toast says so. Turn it on in **Capabilities → Plugins**
 (desktop halves ship off by default).
 
+## With Contract
+
+Hermes keeps only one rewrite of a reply. When the Contract plugin is also enabled,
+Vouch's footer carries Contract's status line as well (proposed, 2/3 checks pass,
+or met with the receipt id), so you see one footer, not one of the two. Vouch reads
+that line through Contract's `contract_status` tool.
+
 ## Configure
 
 Settings live under `plugins.entries.vouch.settings` in `config.yaml`:

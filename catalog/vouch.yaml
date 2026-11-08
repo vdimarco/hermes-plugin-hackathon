@@ -5,7 +5,7 @@ title: Vouch
 repo: https://github.com/vdimarco/hermes-plugin-hackathon
 subdir: plugins/vouch
 sha: a3e6c9aa8d2033382400fb94db26892c45fdc643
-version: "1.1.0"
+version: "1.1.1"
 description: "Checks the agent's \"done\" against the tool record: finds claims such as \"all tests pass\", \"I updated src/app.py\", \"committed\", \"pushed\", \"installed\" or \"deployed\" in the final reply and matches each one to the session's commands, exit codes and file writes. A contradicted, stale or unsupported claim sends the agent back once (pre_verify, after code edits) with the exact mismatch, and claims that are still unsupported get a short footer in the reply. Catches exit codes hidden by pipes (pytest | tail), test runs that found no tests, and edits made after the last passing run. Hermes Desktop: a status-bar chip with the verdict counts of the focused chat; a click lists the flagged claims. Disclosure — no network calls, no shell commands, no subprocesses, no background threads, no credentials, no telemetry. Keeps an in-memory record per session (tool name, command text, paths, exit code, last 600 characters of output; never file contents). Writes totals and the last 50 flagged claims (claim sentence up to 160 characters and the reason) to its plugin state under HERMES_HOME/plugin-data. Appends a footer to replies only when a claim is not supported (configurable). Sends a plugin.vouch.report event (counts and up to 6 flagged claims with reasons) to Desktop windows attached to the same Hermes process; the desktop half keeps the last 20 in Desktop plugin storage."
 maintainer: vdimarco
 tier: community
