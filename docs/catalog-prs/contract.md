@@ -1,7 +1,7 @@
 ## What does this PR do?
 
 Adds **Contract** to the plugin catalog (`plugin-catalog/contract.yaml`), pinned to
-`vdimarco/hermes-plugin-hackathon@bfbc35cc3fe18188a600e131a09989af7d0147f7`, subdir `plugins/contract`.
+`vdimarco/hermes-plugin-hackathon@44a513dc0eae7f25a9bd063572f689cf0a17eaeb`, subdir `plugins/contract`.
 
 Contract is a definition of done the agent cannot fake. Before a coding task, the
 agent proposes shell checks and locked paths (usually the tests); the user
