@@ -74,8 +74,8 @@ the receipt's tree id against a real commit.
 - [x] My commit messages follow [Conventional Commits](https://www.conventionalcommits.org/)
 - [x] I searched for [existing PRs](https://github.com/NousResearch/hermes-agent/pulls) to make sure this isn't a duplicate
 - [x] My PR contains **only** changes related to this fix/feature (one catalog file)
-- [ ] I've run `hermes plugins validate` on the pinned commit and it passes
-- [ ] I've tested on my platform: <!-- e.g. macOS 15 -->
+- [x] I've run `hermes plugins validate` on the pinned commit and it passes
+- [x] I've tested on my platform: Linux, Hermes at e075441 on Python 3.14 (smoke test: 23 of 23 checks pass)
 
 ### Documentation & Housekeeping
 
