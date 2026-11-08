@@ -23,7 +23,8 @@ approves them with `/contract approve`. From then on:
 `pre_llm_call`, `pre_verify`, `transform_llm_output`, `on_session_delete`,
 `subagent_start`; tools `contract_propose`, `contract_status`, `contract_run`;
 slash command `/contract`; CLI command `hermes contract`;
-`ctx.dispatch_tool("terminal", ...)` for check runs.
+`ctx.dispatch_tool("terminal", ...)` for check runs; `ctx.has_plugin("vouch")` to yield its footer
+line to Vouch's footer when Vouch is enabled.
 
 **Disclosure (rule 13):**
 * **Desktop events:** sends plugin.contract.state snapshots (title, checks with commands and reasons, locks, receipt hash) and plugin.contract.blocked events to Desktop windows attached to the same Hermes process; the desktop half keeps the last 20 snapshots in Desktop plugin storage.
