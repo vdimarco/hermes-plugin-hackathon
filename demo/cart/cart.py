@@ -1,4 +1,4 @@
-"""A tiny shopping cart. It has one bug for the Vouch demo."""
+"""A tiny shopping cart. It has one bug for the Contract demo."""
 
 
 def apply_discount(total: float, percent: int) -> float:

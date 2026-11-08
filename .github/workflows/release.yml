@@ -33,7 +33,7 @@ jobs:
           REF="${TARGET:-$GITHUB_SHA}"
           [[ "$REF" =~ ^[0-9a-f]{40}$ ]] || { echo "target must be a full 40-character sha"; exit 1; }
           git merge-base --is-ancestor "$REF" origin/main || { echo "$REF is not on main"; exit 1; }
-          for p in vouch contract multiverse; do
+          for p in contract multiverse; do
             git show "$REF:plugins/$p/plugin.yaml" | grep -qx "version: $VERSION" || { echo "$p is not $VERSION at $REF"; exit 1; }
           done
           test -f "docs/releases/v$VERSION.md" || { echo "missing docs/releases/v$VERSION.md"; exit 1; }

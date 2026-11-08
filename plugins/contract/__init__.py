@@ -1,4 +1,5 @@
-"""Contract: the agent writes the exam before it takes it, and cannot change the exam.
+"""Contract: the agent writes the exam before it takes it, cannot change the exam,
+and cannot claim it passed when it did not.
 
 Before a coding task, the agent (or the user) writes a contract: shell checks that
 pass only when the task is done, plus locked paths (usually the tests). The user
@@ -16,6 +17,13 @@ approves it with /contract approve. From then on:
   with a hash chain and the git tree id of the checked code.
 * /contract receipt prints a block for the PR description; `hermes contract verify`
   checks the hashes and prints a script that runs the checks again.
+
+Vouch, the claim check (vouch.py), runs on every turn, with or without a contract:
+it reads the final reply, finds claims such as "all tests pass" or "pushed to
+origin", and checks each one against the same tool record. A false claim sends the
+agent back once; what is still unsupported goes in the reply footer, next to the
+contract's status line. Hermes keeps only the first reply rewrite, so one plugin
+writes one footer.
 """
 
 from __future__ import annotations
@@ -30,12 +38,14 @@ from typing import Any, Dict, List, Optional
 
 from . import desktop_events, model, schemas
 from .ledger import Ledger
+from .vouch import OWN_TOOLS as VOUCH_TOOLS, Vouch
+from .vouch import _cli_setup as _vouch_cli_setup, _make_cli_handler as _vouch_cli_handler
 
 logger = logging.getLogger(__name__)
 
-VERSION = "1.1.1"
+VERSION = "1.2.0"
 TOOLSET = "contract"
-OWN_TOOLS = {"contract_propose", "contract_status", "contract_run"}
+OWN_TOOLS = {"contract_propose", "contract_status", "contract_run"} | VOUCH_TOOLS
 MAX_CONTRACTS = 32
 MAX_RECEIPTS = 20
 _WORKSPACE_CMD = (
@@ -71,6 +81,7 @@ class ContractPlugin:
         self._loaded = False
         self._models: Dict[str, str] = {}
         self._parents: Dict[str, str] = {}   # subagent session -> parent session key
+        self.vouch = Vouch(ctx, ledger=self.ledger)  # the claim check reads the same tool record
 
     # -- config ---------------------------------------------------------------
     def _cfg(self, key: str, default: Any) -> Any:
@@ -289,6 +300,13 @@ class ContractPlugin:
         return None
 
     def on_pre_verify(self, session_id: str = "", attempt: int = 0, **kwargs: Any) -> Optional[Dict[str, str]]:
+        """The contract gate comes first; when it lets the turn end, Vouch checks the claims."""
+        gate = self._contract_gate(session_id, attempt, **kwargs)
+        if gate:
+            return gate
+        return self.vouch.on_pre_verify(session_id=session_id, attempt=attempt, **kwargs)
+
+    def _contract_gate(self, session_id: str = "", attempt: int = 0, **kwargs: Any) -> Optional[Dict[str, str]]:
         try:
             key = self.key(session_id)
             if kwargs.get("model"):
@@ -329,36 +347,38 @@ class ContractPlugin:
                     f"receipt `{receipt.get('receipt_hash', '')[:12]}` · `/contract receipt` for the PR block")
         return ""
 
-    def _vouch_renders_footer(self) -> bool:
-        """Hermes keeps only the first reply rewrite, so when Vouch is enabled it renders one footer
-        for both plugins and fetches this plugin's line through contract_status (footer_request)."""
-        try:
-            return bool(self.ctx.has_plugin("vouch"))
-        except Exception:
-            return False
-
     def on_transform_llm_output(self, response_text: str = "", session_id: str = "", **kwargs: Any) -> Optional[str]:
+        """One footer: Vouch's claim verdicts, then the contract's status line."""
         if not isinstance(response_text, str) or not response_text.strip():
             return None
         try:
             key = self.key(session_id)
             if kwargs.get("model"):
                 self._models[key] = str(kwargs["model"])
-            if self._vouch_renders_footer():
+            claims = self.vouch.footer(response_text, session_id)
+            if _truthy(self._cfg("footer", True)):
+                line = self.footer_line(key)
+            else:
+                line = ""
                 contract = self._refresh(key)  # still move an all-passing contract to met
                 if contract and contract["status"] == model.ACTIVE and model.all_pass(contract, self.last_write_seq(key)):
                     self._finish(key, contract)
+            if claims and line:
+                footer = claims + "\n\n" + line
+            elif claims:
+                footer = claims
+            elif line:
+                footer = "\n---\n" + line
+            else:
                 return None
-            if not _truthy(self._cfg("footer", True)):
-                return None
-            line = self.footer_line(key)
-            return response_text.rstrip() + "\n\n---\n" + line if line else None
+            return response_text.rstrip() + "\n" + footer
         except Exception:
             logger.debug("contract: transform failed", exc_info=True)
             return None
 
     def on_session_delete(self, session_id: str = "", **kwargs: Any) -> None:
         key = self.key(session_id)
+        self.vouch.on_session_delete(session_id=session_id)
         self.ledger.forget(key)
         self._put(key, None)
 
@@ -389,14 +409,8 @@ class ContractPlugin:
             return json.dumps({"error": f"contract_propose failed: {exc}"})
 
     def tool_status(self, args: Dict[str, Any], session_id: Optional[str] = None,
-                    task_id: Optional[str] = None, footer_request: bool = False, **kwargs: Any) -> str:
+                    task_id: Optional[str] = None, **kwargs: Any) -> str:
         try:
-            if footer_request:
-                # Another plugin (Vouch) asks for this session's footer line. Only plugin code can pass
-                # this keyword; the model calls the tool with an args dict.
-                if not _truthy(self._cfg("footer", True)):
-                    return json.dumps({"footer_line": ""})
-                return json.dumps({"footer_line": self.footer_line(self.key(session_id, task_id))})
             key = self.resolve(session_id, task_id)
             contract = self._refresh(key)
             if not contract:
@@ -635,9 +649,19 @@ def register(ctx: Any) -> None:
                       handler=plugin.tool_status, emoji="📜")
     ctx.register_tool(name="contract_run", toolset=TOOLSET, schema=schemas.CONTRACT_RUN,
                       handler=plugin.tool_run, emoji="📜")
+    ctx.register_tool(name="vouch_evidence", toolset=TOOLSET, schema=schemas.VOUCH_EVIDENCE,
+                      handler=plugin.vouch.tool_evidence, emoji="🧾")
+    ctx.register_tool(name="vouch_check", toolset=TOOLSET, schema=schemas.VOUCH_CHECK,
+                      handler=plugin.vouch.tool_check, emoji="🧾")
     ctx.register_command("contract", handler=plugin.command,
                          description="Show, approve or reset the definition-of-done contract",
                          args_hint="[approve|add|lock|unlock|receipt|reset]")
+    ctx.register_command("vouch", handler=plugin.vouch.command,
+                         description="Show which claims in the last reply the tool record supports",
+                         args_hint="[evidence|stats]")
     ctx.register_cli_command(name="contract", help="Contract receipts: list, show, export, verify",
                              setup_fn=_cli_setup, handler_fn=_make_cli_handler(ctx),
                              description="List, export and verify contract receipts.")
+    ctx.register_cli_command(name="vouch", help="Vouch claim-check totals",
+                             setup_fn=_vouch_cli_setup, handler_fn=_vouch_cli_handler(ctx),
+                             description="Show how often the agent's claims matched the tool record.")

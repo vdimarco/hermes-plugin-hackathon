@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # Smoke test inside a real Hermes install (no LLM needed).
-# Install and enable the three plugins in HERMES_HOME first, then run from any folder:
+# Install and enable contract and multiverse in HERMES_HOME first, then run from any folder:
 #   HERMES_HOME=~/.hermes <hermes venv>/bin/python scripts/smoke-hermes.py
 # It makes a throwaway git repo in a temp folder and drives the plugins through
 # model_tools.handle_function_call, the plugin hooks and the plugin slash commands.
@@ -68,17 +68,22 @@ r = call("write_file", {"path": "cart.py", "content": FIXED})
 step("non-locked write allowed", "Contract lock" not in json.dumps(r) and (repo / "cart.py").read_text() == FIXED)
 r = call("contract_run", {})
 step("contract_run via real terminal -> met", r.get("status") == "met", str(r)[:200])
+msg = get_pre_verify_continue_message(session_id="s1", platform="cli", model="m", coding=True, attempt=0,
+                                      final_response="Fixed. The check passes and I pushed to origin.", changed_paths=["cart.py"])
+step("contract met: claim check sends a false push back", bool(msg) and "[Vouch]" in msg and "push" in msg, (msg or "")[:140])
 tree = subprocess.run(["git", "-C", str(repo), "rev-parse", "HEAD^{tree}"], capture_output=True, text=True).stdout.strip()
 out = invoke_plugin_command(handler, "receipt", session_id="s1")
 step("/contract receipt has the PR block", "Contract met" in str(out) and "```json" in str(out))
 
-# ---- Vouch -----------------------------------------------------------------
+# ---- Vouch, the claim check inside Contract --------------------------------
 reps = invoke_hook("transform_llm_output", response_text="Fixed cart.py. The check passes and I pushed to origin.",
                    session_id="s1", model="m", platform="cli", turn_id="turn-1")
 footer = next((x for x in reps if isinstance(x, str)), "")
 step("one footer: vouch flags the unbacked push", "changes pushed" in footer and "no git push" in footer, "")
 step("one footer: it also carries the contract line", "Contract met" in footer, footer.splitlines()[-1][:120] if footer else "no rewrite")
 step("only one plugin rewrote the reply", sum(isinstance(x, str) for x in reps) == 1, f"rewrites={sum(isinstance(x, str) for x in reps)}")
+out = invoke_plugin_command(get_plugin_command_handler("vouch"), "", session_id="s1")
+step("/vouch lists the verdicts", "contradicted" in str(out) or "unverified" in str(out), str(out).splitlines()[0][:120] if out else "")
 r = call("vouch_evidence", {"kind": "edits"})
 step("vouch_evidence sees the real write", any("cart.py" in json.dumps(e) for e in r.get("events", [])), str(r)[:140])
 

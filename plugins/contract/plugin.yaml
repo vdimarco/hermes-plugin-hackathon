@@ -1,10 +1,12 @@
 name: contract
-version: 1.1.1
+version: 1.2.0
 description: >-
   Definition of done that the agent cannot fake. Before a coding task, the agent
   proposes shell checks and locked paths; you approve them with /contract approve.
   The agent then cannot edit the locked tests, cannot finish while a check fails,
-  and gets a receipt (hash chain plus git tree id) when every check passes.
+  and gets a receipt (hash chain plus git tree id) when every check passes. On every
+  turn, Vouch checks each claim in the reply ("all tests pass", "pushed to origin")
+  against the tool record and sends the agent back when a claim is false.
 author: vdimarco
 manifest_version: 2
 api_version: 1
@@ -16,6 +18,8 @@ provides_tools:
   - contract_propose
   - contract_status
   - contract_run
+  - vouch_evidence
+  - vouch_check
 provides_hooks:
   - post_tool_call
   - pre_tool_call
@@ -44,4 +48,31 @@ config_schema:
     type: bool
     default: true
     label: Reply footer
-    description: Add one status line about the contract under replies.
+    description: >-
+      Add a short footer under replies: the claims Vouch could not verify, and one
+      status line about the contract.
+  claims_mode:
+    type: str
+    choices: [nudge, annotate, "off"]
+    default: nudge
+    label: Claim check (Vouch)
+    description: >-
+      nudge = send the agent back once when a claim in its reply is false or
+      unsupported, then annotate; annotate = only add the footer; off = no claim check.
+  claims_max_nudges:
+    type: int
+    default: 1
+    label: Max claim nudges per turn
+    description: How many times one turn can be sent back for a false claim. Hermes also caps this with agent.max_verify_nudges.
+  claims_footer_verified:
+    type: bool
+    default: false
+    label: Show verified claims
+    description: Also list claims that passed in the footer (useful for demos and audits).
+  claims_kinds:
+    type: list
+    default: []
+    label: Claim types
+    description: >-
+      Limit the claim check to these types (tests, build, lint, edit, ran, commit,
+      push, install, deploy, verified). Empty = all.

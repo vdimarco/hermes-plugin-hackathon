@@ -6,7 +6,7 @@
 #
 #   scripts/open-catalog-prs.sh            # dry run: validate, prepare branches, show the PRs
 #   scripts/open-catalog-prs.sh --open     # also push the branches and open the PRs
-#   scripts/open-catalog-prs.sh --open vouch   # only one plugin
+#   scripts/open-catalog-prs.sh --open contract   # only one plugin
 #
 # Needs: git, gh. Uses hermes (if installed) to validate each plugin at the pinned sha.
 set -euo pipefail
@@ -20,7 +20,7 @@ for arg in "$@"; do
     *) PLUGINS+=("$arg") ;;
   esac
 done
-[ ${#PLUGINS[@]} -eq 0 ] && PLUGINS=(vouch contract multiverse)
+[ ${#PLUGINS[@]} -eq 0 ] && PLUGINS=(contract multiverse)
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 UPSTREAM="NousResearch/hermes-agent"

@@ -1,7 +1,7 @@
 ## What does this PR do?
 
 Adds **Multiverse** to the plugin catalog (`plugin-catalog/multiverse.yaml`), pinned to
-`vdimarco/hermes-plugin-hackathon@bfbc35cc3fe18188a600e131a09989af7d0147f7`, subdir `plugins/multiverse`.
+`vdimarco/hermes-plugin-hackathon@44a513dc0eae7f25a9bd063572f689cf0a17eaeb`, subdir `plugins/multiverse`.
 
 Multiverse is best-of-N for coding agents, with real checks. `multiverse_race`:
 
@@ -76,7 +76,7 @@ including integration tests that run the real git commands in a temporary repo
 - [x] I searched for [existing PRs](https://github.com/NousResearch/hermes-agent/pulls) to make sure this isn't a duplicate
 - [x] My PR contains **only** changes related to this fix/feature (one catalog file)
 - [x] I've run `hermes plugins validate` on the pinned commit and it passes
-- [x] I've tested on my platform: Linux, Hermes at e075441 on Python 3.14 (smoke test: 23 of 23 checks pass)
+- [x] I've tested on my platform: Linux, Hermes at e075441 on Python 3.14 (smoke test: 25 of 25 checks pass)
 
 ### Documentation & Housekeeping
 

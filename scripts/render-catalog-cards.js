@@ -50,19 +50,6 @@ const card = (accent, a20, a10, kicker, name, tag, chips, panel) => `<!doctype h
 <div class="repo">github.com/vdimarco/hermes-plugin-hackathon</div>
 </div><div class="right">${panel}</div></div></body></html>`
 
-const vouchPanel = `<div class="panel"><div class="bar"><i></i><i></i><i></i><span>hermes · reply</span></div><div class="body">
-<div style="font-size:16px;line-height:1.5;color:#d6d9df">Fixed the discount rounding in <span class="mono" style="color:#f2f3f5">cart.py</span>. All tests pass and I pushed the fix to origin.</div>
-<div class="sep"></div>
-<div class="row" style="font-size:13px;color:#8a909c"><b style="color:#f2f3f5;font-weight:650">Vouch</b> · 3 claims checked · 1 contradicted · 1 unverified · 1 verified</div>
-<div style="margin-top:12px;display:flex;flex-direction:column;gap:10px">
-<div><div class="row"><span class="dot bad"></span><b style="font-weight:600">tests pass</b></div><div class="sub"><span class="mono">pytest -q | tail -1</span> exited 0, but the output shows 1 failed</div></div>
-<div><div class="row"><span class="dot warn"></span><b style="font-weight:600">changes pushed</b></div><div class="sub">no git push command ran in this session</div></div>
-<div><div class="row"><span class="dot good"></span><b style="font-weight:600">file changed (cart.py)</b></div><div class="sub">patch cart.py (ok)</div></div>
-</div>
-<div class="sep"></div>
-<div class="row mono" style="font-size:12.5px;color:#8a909c;justify-content:flex-end;gap:7px"><span class="dot bad"></span>vouch ✓1 ⚠1 ✗1</div>
-</div></div>`
-
 const contractPanel = `<div class="panel"><div class="bar"><i></i><i></i><i></i><span>Contract</span></div><div class="body">
 <div style="font-size:17px;font-weight:650">Fix double discount</div>
 <div class="row" style="margin-top:8px;font-size:13px;color:#8a909c"><span class="badge" style="background:rgba(62,207,142,.14);color:#3ecf8e">met</span>2/2 checks pass</div>
@@ -76,6 +63,8 @@ const contractPanel = `<div class="panel"><div class="bar"><i></i><i></i><i></i>
 <div class="row mono" style="font-size:12.5px;color:#b9bec8;margin-top:10px">receipt 9f2c41d0a7e3c8b1 <span style="margin-left:auto;color:#6f7684">tree 4b1e0c9a77</span></div>
 <div style="margin-top:14px;border:1px solid rgba(245,177,61,.35);background:rgba(245,177,61,.08);border-radius:8px;padding:9px 12px;font-size:13px;color:#f5d39a">
 <b style="color:#f5b13d">Contract lock</b> · blocked a patch edit to <span class="mono">tests/test_cart.py</span></div>
+<div style="margin-top:8px;border:1px solid rgba(242,85,90,.35);background:rgba(242,85,90,.08);border-radius:8px;padding:9px 12px;font-size:13px;color:#f7b4b6">
+<b style="color:#f2555a">Vouch</b> · ✗ “pushed to origin”: no git push command ran</div>
 </div></div>`
 
 const mvPanel = `<div class="panel"><div class="bar"><i></i><i></i><i></i><span>Multiverse</span></div><div class="body">
@@ -92,12 +81,9 @@ const mvPanel = `<div class="panel"><div class="bar"><i></i><i></i><i></i><span>
 </div></div>`
 
 const cards = {
-  vouch: card('#f5b13d', 'rgba(245,177,61,.22)', 'rgba(245,177,61,.07)', 'Plugin for Hermes Agent', 'Vouch',
-    'Checks every <b>“done”</b> in the agent’s reply against what it really ran.',
-    ['tests pass?', 'committed?', 'pushed?', 'deployed?'], vouchPanel),
   contract: card('#3ecf8e', 'rgba(62,207,142,.2)', 'rgba(62,207,142,.07)', 'Plugin for Hermes Agent', 'Contract',
-    'You approve the definition of done. The agent <b>cannot edit the tests</b> or finish while a check fails.',
-    ['locked tests', 'finish gate', 're-runnable receipt'], contractPanel),
+    'You approve the definition of done. The agent <b>cannot edit the tests</b>, cannot finish while a check fails, and <b>cannot fake “done”</b>.',
+    ['locked tests', 'finish gate', 'claim check', 'receipt'], contractPanel),
   multiverse: card('#a78bfa', 'rgba(167,139,250,.24)', 'rgba(167,139,250,.08)', 'Plugin for Hermes Agent', 'Multiverse',
     'Races attempts at a coding task in <b>separate git worktrees</b> and keeps the one that passes.',
     ['2–6 attempts', 'pinned subagents', 'model races'], mvPanel),

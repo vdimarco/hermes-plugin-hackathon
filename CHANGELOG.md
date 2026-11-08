@@ -1,6 +1,15 @@
 # Changelog
 
-All three plugins (Vouch, Contract, Multiverse) share one version.
+The plugins (Contract and Multiverse; Vouch until 1.1.1) share one version.
+
+## 1.2.0
+
+- **Vouch now ships inside Contract.** One install gives the definition-of-done contract and the claim check. Both read one tool record and write one reply footer: Vouch's claim verdicts, then the contract's status line. The claim check works with or without a contract.
+- Contract's `pre_verify` runs the contract gate first; when the gate lets the turn end, Vouch checks the draft reply.
+- New Contract settings for the claim check: `claims_mode`, `claims_max_nudges`, `claims_footer_verified`, `claims_kinds`. `footer` covers both parts. These replace Vouch's `mode`, `max_nudges`, `footer_verified` and `kinds`.
+- Contract's Desktop half adds the Vouch chip (`vouch ✓3 ⚠1 ✗1`) and the "sent back" toast. Events move from `plugin.vouch.report` to `plugin.contract.report`.
+- Removed: the separate `vouch` plugin and its catalog entry, and the `footer_request` handoff between the two plugins.
+- Multiverse: no change except the version number.
 
 ## 1.1.1
 

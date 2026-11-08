@@ -16,8 +16,9 @@ class SuiteRules(unittest.TestCase):
     def plugins(self):
         return sorted(p for p in PLUGINS.iterdir() if (p / "plugin.yaml").is_file())
 
-    def test_three_plugins(self):
-        self.assertEqual([p.name for p in self.plugins()], ["contract", "multiverse", "vouch"])
+    def test_two_plugins(self):
+        # Vouch, the claim check, ships inside Contract since 1.2.0 (one catalog entry, one install).
+        self.assertEqual([p.name for p in self.plugins()], ["contract", "multiverse"])
 
     def test_no_shell_network_or_core_overrides(self):
         for plugin in self.plugins():
@@ -97,7 +98,7 @@ class InstallLinksAndRelease(unittest.TestCase):
         for readme in [ROOT / "README.md"] + list(PLUGINS.glob("*/README.md")):
             links |= set(re.findall(r"hermes://plugin/install\?\S+", readme.read_text()))
         repo_links = [l for l in links if "repo=" in l]
-        self.assertEqual(len(repo_links), 3, repo_links)
+        self.assertEqual(len(repo_links), 2, repo_links)
         for link in repo_links:
             params = parse_qs(urlparse(link).query)
             self.assertEqual(params.get("enable"), ["1"], link)
@@ -106,11 +107,11 @@ class InstallLinksAndRelease(unittest.TestCase):
             self.assertTrue(m, url)
             self.assertTrue((ROOT / m.group(1) / "plugin.yaml").is_file(), url)
         catalog_links = sorted(l.rstrip("`).") for l in links if "catalog=" in l)
-        self.assertEqual(catalog_links, [f"hermes://plugin/install?catalog={n}" for n in ("contract", "multiverse", "vouch")])
+        self.assertEqual(catalog_links, [f"hermes://plugin/install?catalog={n}" for n in ("contract", "multiverse")])
 
     def test_release_notes_for_current_version(self):
         versions = {yaml.safe_load((p / "plugin.yaml").read_text())["version"] for p in PLUGINS.iterdir() if (p / "plugin.yaml").is_file()}
-        self.assertEqual(len(versions), 1, "all three plugins share one version")
+        self.assertEqual(len(versions), 1, "the plugins share one version")
         version = versions.pop()
         self.assertTrue((ROOT / "docs" / "releases" / f"v{version}.md").is_file())
         self.assertIn(f"## {version}", (ROOT / "CHANGELOG.md").read_text())

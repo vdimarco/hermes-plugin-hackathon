@@ -1,18 +1,18 @@
-"""Vouch: the agent's "done" must match the tool record.
+"""Vouch, Contract's claim check: the agent's "done" must match the tool record.
 
-Vouch watches every tool call (post_tool_call) and keeps a per-session record of
-what really happened: commands and their exit codes, files written, test, build,
-lint, git, install and deploy runs. When the agent is about to finish, Vouch reads
-its reply, finds claims such as "all tests pass" or "I updated src/app.py", and
-checks each one against the record.
+Contract records every tool call in one per-session ledger: commands and their exit
+codes, files written, test, build, lint, git, install and deploy runs. When the agent
+is about to finish, Vouch reads its reply, finds claims such as "all tests pass" or
+"I updated src/app.py", and checks each one against that record. It works with or
+without an approved contract.
 
-* pre_verify: after code edits, a false or unsupported claim sends the agent back
-  to work once, with the exact contradiction (bounded by ``max_nudges``).
-* transform_llm_output: claims that are still unsupported get a short footer in
-  the reply the user sees.
+* pre_verify: a false or unsupported claim sends the agent back to work once, with
+  the exact contradiction (bounded by ``claims_max_nudges``).
+* The reply footer lists the claims that are still unsupported.
 * Tools ``vouch_evidence`` and ``vouch_check`` let the model inspect the record.
 * ``/vouch`` shows the last verdicts; ``hermes vouch stats`` shows totals.
 
+This module registers nothing itself: ContractPlugin calls it from its own hooks.
 No network calls, no shell commands, no background threads, no credentials.
 """
 
@@ -25,29 +25,26 @@ import time
 from collections import OrderedDict
 from typing import Any, Dict, Optional
 
-from . import checker, desktop_events, schemas
+from . import checker, desktop_events
 from .claims import KINDS
 from .ledger import Ledger
 
 logger = logging.getLogger(__name__)
 
-TOOLSET = "vouch"
 OWN_TOOLS = {"vouch_evidence", "vouch_check"}
 MODES = ("nudge", "annotate", "off")
 RECENT_LIMIT = 50
 
-_LEDGER = Ledger()
-_LAST_REPORTS: "OrderedDict[str, checker.Report]" = OrderedDict()
 _LOCK = threading.Lock()
 
 
 class Vouch:
-    """Holds the plugin context. One instance per register() call."""
+    """The claim check. Shares the ledger of the ContractPlugin that owns it."""
 
     def __init__(self, ctx: Any, ledger: Optional[Ledger] = None) -> None:
         self.ctx = ctx
-        self.ledger = ledger or _LEDGER
-        self.reports: "OrderedDict[str, checker.Report]" = _LAST_REPORTS if ledger is None else OrderedDict()
+        self.ledger = ledger if ledger is not None else Ledger()
+        self.reports: "OrderedDict[str, checker.Report]" = OrderedDict()
 
     # -- config -----------------------------------------------------------------
     def _cfg(self, key: str, default: Any) -> Any:
@@ -58,12 +55,12 @@ class Vouch:
         return default if value is None else value
 
     def mode(self) -> str:
-        value = str(self._cfg("mode", "nudge")).strip().lower()
+        value = str(self._cfg("claims_mode", "nudge")).strip().lower()
         return value if value in MODES else "nudge"
 
     def max_nudges(self) -> int:
         try:
-            return max(0, int(self._cfg("max_nudges", 1)))
+            return max(0, int(self._cfg("claims_max_nudges", 1)))
         except (TypeError, ValueError):
             return 1
 
@@ -71,10 +68,10 @@ class Vouch:
         return _truthy(self._cfg("footer", True))
 
     def footer_verified(self) -> bool:
-        return _truthy(self._cfg("footer_verified", False))
+        return _truthy(self._cfg("claims_footer_verified", False))
 
     def kinds(self):
-        value = self._cfg("kinds", [])
+        value = self._cfg("claims_kinds", [])
         if isinstance(value, str):
             value = [v.strip() for v in value.split(",")]
         chosen = [k for k in (value or []) if k in KINDS]
@@ -154,41 +151,30 @@ class Vouch:
             logger.debug("vouch: pre_verify failed", exc_info=True)
             return None
 
-    def on_transform_llm_output(self, response_text: str = "", session_id: str = "",
-                                **kwargs: Any) -> Optional[str]:
+    def footer(self, response_text: str, session_id: str = "") -> str:
+        """Check the final reply and return the Vouch part of the footer ("" when nothing to say)."""
         if not isinstance(response_text, str) or not response_text.strip():
-            return None
-        footer = ""
+            return ""
         try:
             key = self._session_key(session_id)
-            if self.mode() != "off":
-                report = checker.check_reply(response_text, self.ledger.events(key), self.kinds())
-                self._remember(key, report)
-                self._record_stats(key, report)
-                if report.findings:
-                    desktop_events.emit("report", _desktop_report(key, report, stage="final"))
-                if self.footer_enabled():
-                    footer = checker.format_footer(report, show_verified=self.footer_verified())
-        except Exception:
-            logger.debug("vouch: transform failed", exc_info=True)
-        # Hermes keeps only the first reply rewrite, so Vouch also carries Contract's status line
-        # (Contract yields its own footer while Vouch is enabled).
-        contract_line = self._contract_footer_line(session_id)
-        if contract_line:
-            footer = (footer + "\n\n" + contract_line) if footer else ("\n---\n" + contract_line)
-        return response_text.rstrip() + "\n" + footer if footer else None
-
-    def _contract_footer_line(self, session_id: str) -> str:
-        try:
-            if not self.ctx.has_plugin("contract"):
+            if self.mode() == "off":
                 return ""
-            raw = self.ctx.dispatch_tool("contract_status", {}, session_id=session_id, footer_request=True)
-            data = json.loads(raw) if isinstance(raw, str) else (raw or {})
-            line = data.get("footer_line") if isinstance(data, dict) else ""
-            return line if isinstance(line, str) else ""
+            report = checker.check_reply(response_text, self.ledger.events(key), self.kinds())
+            self._remember(key, report)
+            self._record_stats(key, report)
+            if report.findings:
+                desktop_events.emit("report", _desktop_report(key, report, stage="final"))
+            if self.footer_enabled():
+                return checker.format_footer(report, show_verified=self.footer_verified())
         except Exception:
-            logger.debug("vouch: contract footer line unavailable", exc_info=True)
-            return ""
+            logger.debug("vouch: footer failed", exc_info=True)
+        return ""
+
+    def on_transform_llm_output(self, response_text: str = "", session_id: str = "",
+                                **kwargs: Any) -> Optional[str]:
+        """The reply with the Vouch footer alone (ContractPlugin adds its own status line)."""
+        footer = self.footer(response_text, session_id)
+        return response_text.rstrip() + "\n" + footer if footer else None
 
     def on_session_delete(self, session_id: str = "", **kwargs: Any) -> None:
         key = self._session_key(session_id)
@@ -362,22 +348,3 @@ def _make_cli_handler(ctx: Any):
         print(format_stats(ctx))
         return 0
     return handler
-
-
-def register(ctx: Any) -> None:
-    """Hermes entry point."""
-    vouch = Vouch(ctx)
-    ctx.register_hook("post_tool_call", vouch.on_post_tool_call)
-    ctx.register_hook("pre_verify", vouch.on_pre_verify)
-    ctx.register_hook("transform_llm_output", vouch.on_transform_llm_output)
-    ctx.register_hook("on_session_delete", vouch.on_session_delete)
-    ctx.register_tool(name="vouch_evidence", toolset=TOOLSET, schema=schemas.VOUCH_EVIDENCE,
-                      handler=vouch.tool_evidence, emoji="🧾")
-    ctx.register_tool(name="vouch_check", toolset=TOOLSET, schema=schemas.VOUCH_CHECK,
-                      handler=vouch.tool_check, emoji="🧾")
-    ctx.register_command("vouch", handler=vouch.command,
-                         description="Show which claims in the last reply the tool record supports",
-                         args_hint="[evidence|stats]")
-    ctx.register_cli_command(name="vouch", help="Vouch claim-check totals",
-                             setup_fn=_cli_setup, handler_fn=_make_cli_handler(ctx),
-                             description="Show how often the agent's claims matched the tool record.")

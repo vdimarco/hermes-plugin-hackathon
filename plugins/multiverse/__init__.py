@@ -29,7 +29,7 @@ from . import desktop_events, runs, schemas
 
 logger = logging.getLogger(__name__)
 
-VERSION = "1.1.1"
+VERSION = "1.2.0"
 TOOLSET = "multiverse"
 MAX_RUNS = 16
 

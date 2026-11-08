@@ -1,5 +1,5 @@
 name: multiverse
-version: 1.1.1
+version: 1.2.0
 description: >-
   Try a coding task several ways at once and keep the one that passes. One git
   worktree and one subagent per attempt, each subagent pinned to its own worktree,
